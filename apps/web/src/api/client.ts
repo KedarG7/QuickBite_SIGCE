@@ -1,0 +1,41 @@
+export type ApiErrorPayload = { error?: string; message?: string } | null;
+
+export class ApiError extends Error {
+  status: number;
+  payload: ApiErrorPayload;
+
+  constructor(message: string, status: number, payload: ApiErrorPayload) {
+    super(message);
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "";
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "content-type": "application/json",
+      ...(init?.headers || {})
+    },
+    credentials: "include"
+  });
+
+  const text = await res.text();
+  const data = text ? (JSON.parse(text) as any) : null;
+
+  if (!res.ok) {
+    const msg = data?.message || data?.error || `Request failed (${res.status})`;
+    throw new ApiError(msg, res.status, data);
+  }
+
+  return data as T;
+}
+
+export function formatINR(paise: number) {
+  const rupees = paise / 100;
+  return rupees.toLocaleString("en-IN", { style: "currency", currency: "INR" });
+}
+
