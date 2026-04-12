@@ -15,6 +15,7 @@ Student, Teacher and Admin panels for canteen ordering with:
 ## Quick start (local)
 1) Start MongoDB (choose one):
 - Local MongoDB running on `mongodb://localhost:27017`
+
 - Or Docker:
 ```bash
 docker compose up -d

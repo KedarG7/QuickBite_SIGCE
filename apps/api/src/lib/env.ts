@@ -14,7 +14,7 @@ const schema = z.object({
   JWT_EXPIRES_IN: z.string().default("7d"),
   COOKIE_NAME: z.string().default("sigce_canteen_session"),
 
-  STUDENT_EMAIL_REGEX: z.string().default("^\\\\d{4}ci\\\\d{2}f@sigce\\\\.edu\\\\.in$"),
+  STUDENT_EMAIL_REGEX: z.string().default("^[a-zA-Z0-9._%+-]+@sigce\\.edu\\.in$"),
   TEACHER_EMAIL_DOMAIN: z.string().default("sigce.edu.in"),
   ADMIN_EMAIL: z.string().email().default("admin@sigce.edu.in"),
   ADMIN_PASSWORD: z.string().min(8).default("admin12345"),
