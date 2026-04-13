@@ -46,6 +46,13 @@ export function AdminMenuPage() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [menuQuery.data]);
 
+  const availableGrouped = useMemo(() => {
+    const items = (menuQuery.data?.menuItems || []).filter((i) => i.available);
+    const map = new Map<string, MenuItem[]>();
+    for (const i of items) map.set(i.category, [...(map.get(i.category) || []), i]);
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [menuQuery.data]);
+
   return (
     <div className="stack">
       <div className="card">
@@ -68,6 +75,31 @@ export function AdminMenuPage() {
           <button className="btn primary" disabled={!name || createMutation.isPending} onClick={() => createMutation.mutate()}>
             Add Item
           </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="row row-between">
+          <h2 className="h2">Today’s Menu (Available)</h2>
+          <div className="pill">{(menuQuery.data?.menuItems || []).filter((i) => i.available).length} items</div>
+        </div>
+        {menuQuery.isLoading ? <div className="muted">Loading…</div> : null}
+        {menuQuery.isError ? <div className="notice danger">Failed to load menu.</div> : null}
+        {!menuQuery.isLoading && !menuQuery.isError && availableGrouped.length === 0 ? (
+          <div className="muted">No items are marked available.</div>
+        ) : null}
+        <div className="stack mini">
+          {availableGrouped.map(([cat, items]) => (
+            <div key={cat} className="stack mini">
+              <div className="h3">{cat}</div>
+              {items.map((i) => (
+                <div key={i.id} className="row row-between">
+                  <div className="item-title">{i.name}</div>
+                  <div className="price">{formatINR(i.pricePaise)}</div>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
 

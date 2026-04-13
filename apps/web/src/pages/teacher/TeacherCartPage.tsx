@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
@@ -27,7 +27,7 @@ export function TeacherCartPage() {
   const [fulfillment, setFulfillment] = useState<"PICKUP" | "STAFF_ROOM">("PICKUP");
   const [slotStart, setSlotStart] = useState<string>("");
   const [staffRoomNumber, setStaffRoomNumber] = useState<string>(user?.staffRoomNumber || "");
-  const [notes, setNotes] = useState("");
+  const [staffRoomModalOpen, setStaffRoomModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -37,11 +37,19 @@ export function TeacherCartPage() {
   });
 
   const totalPaise = useMemo(() => cart.items.reduce((sum, it) => sum + it.pricePaise * it.quantity, 0), [cart.items]);
+  const itemCount = useMemo(() => cart.items.reduce((sum, it) => sum + it.quantity, 0), [cart.items]);
 
   const pickupSlots = (slotsQuery.data?.pickup || []).filter((s) => s.remaining > 0);
   const staffRoomSlots = (slotsQuery.data?.staffRoomLunch || []).filter((s) => s.remaining > 0);
 
   const availableSlots = fulfillment === "STAFF_ROOM" ? staffRoomSlots : pickupSlots;
+  const selectedSlot = availableSlots.find((s) => s.start === slotStart) ?? availableSlots[0];
+
+  useEffect(() => {
+    if (!slotStart && availableSlots.length) {
+      setSlotStart(availableSlots[0].start);
+    }
+  }, [availableSlots, slotStart]);
 
   return (
     <div className="stack">
@@ -99,54 +107,77 @@ export function TeacherCartPage() {
           Teachers can preorder lunch to the staff room before {slotsQuery.data?.rules.teacherPreorderCutoff ?? "10:30"}.
         </p>
         <div className="row">
-          <label className="pill">
-            <input type="radio" checked={fulfillment === "PICKUP"} onChange={() => setFulfillment("PICKUP")} /> Pickup
-          </label>
-          <label className="pill">
-            <input
-              type="radio"
-              checked={fulfillment === "STAFF_ROOM"}
-              onChange={() => setFulfillment("STAFF_ROOM")}
-              disabled={!staffRoomSlots.length}
-            />{" "}
+          <button
+            type="button"
+            className={`btn payment-toggle ${fulfillment === "PICKUP" ? "primary" : ""}`}
+            aria-pressed={fulfillment === "PICKUP"}
+            onClick={() => setFulfillment("PICKUP")}
+          >
+            Pickup
+          </button>
+          <button
+            type="button"
+            className={`btn payment-toggle ${fulfillment === "STAFF_ROOM" ? "primary" : ""}`}
+            aria-pressed={fulfillment === "STAFF_ROOM"}
+            onClick={() => {
+              setFulfillment("STAFF_ROOM");
+              setStaffRoomModalOpen(true);
+            }}
+            disabled={!staffRoomSlots.length}
+          >
             Staff Room (Lunch)
-          </label>
+          </button>
         </div>
         {fulfillment === "STAFF_ROOM" ? (
-          <div className="field">
-            <label>Staff Room Number</label>
-            <input value={staffRoomNumber} onChange={(e) => setStaffRoomNumber(e.target.value)} placeholder="e.g. SR-12" />
+          <div className="notice">
+            {staffRoomNumber ? (
+              <>
+                Deliver to room {staffRoomNumber}.
+                <button type="button" className="btn small" onClick={() => setStaffRoomModalOpen(true)}>
+                  Edit
+                </button>
+              </>
+            ) : (
+              <>
+                Room number required for staff room delivery.
+                <button type="button" className="btn small" onClick={() => setStaffRoomModalOpen(true)}>
+                  Add room
+                </button>
+              </>
+            )}
           </div>
         ) : null}
       </div>
 
       <div className="card">
         <h2 className="h2">{fulfillment === "STAFF_ROOM" ? "Delivery Slot (Lunch Window)" : "Pickup Slot"}</h2>
-        <select value={slotStart} onChange={(e) => setSlotStart(e.target.value)} disabled={!availableSlots.length}>
-          <option value="">Select a slot</option>
-          {availableSlots.map((s) => (
-            <option key={s.slotKey} value={s.start}>
-              {new Date(s.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (Remaining {s.remaining})
-            </option>
-          ))}
-        </select>
-        {!availableSlots.length ? <div className="hint danger">No slots available.</div> : null}
+        {selectedSlot ? (
+          <div className="notice">
+            {new Date(selectedSlot.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Remaining {selectedSlot.remaining}
+          </div>
+        ) : null}
+        {!selectedSlot ? <div className="hint danger">No slots available.</div> : null}
       </div>
 
       <div className="card">
         <h2 className="h2">Payment</h2>
         <div className="row">
-          <label className="pill">
-            <input type="radio" checked={paymentMethod === "CASH"} onChange={() => setPaymentMethod("CASH")} /> Cash
-          </label>
-          <label className="pill">
-            <input type="radio" checked={paymentMethod === "RAZORPAY"} onChange={() => setPaymentMethod("RAZORPAY")} /> Online
-          </label>
-        </div>
-
-        <div className="field">
-          <label>Notes (optional)</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any instructions..." />
+          <button
+            type="button"
+            className={`btn payment-toggle ${paymentMethod === "CASH" ? "primary" : ""}`}
+            aria-pressed={paymentMethod === "CASH"}
+            onClick={() => setPaymentMethod("CASH")}
+          >
+            Cash
+          </button>
+          <button
+            type="button"
+            className={`btn payment-toggle ${paymentMethod === "RAZORPAY" ? "primary" : ""}`}
+            aria-pressed={paymentMethod === "RAZORPAY"}
+            onClick={() => setPaymentMethod("RAZORPAY")}
+          >
+            Online
+          </button>
         </div>
 
         {geofenceEnabled ? (
@@ -167,62 +198,106 @@ export function TeacherCartPage() {
 
         {error ? <div className="notice danger">{error}</div> : null}
 
-        <button
-          className="btn primary"
-          disabled={busy || !cart.items.length || !slotStart}
-          onClick={async () => {
-            setError(null);
-            setBusy(true);
-            try {
-              const clientLocation = geo.status === "ok" ? { lat: geo.lat, lng: geo.lng } : undefined;
-
-              const res = await apiFetch<any>("/api/orders", {
-                method: "POST",
-                body: JSON.stringify({
-                  items: cart.items.map((it) => ({ menuItemId: it.id, quantity: it.quantity })),
-                  paymentMethod,
-                  fulfillment,
-                  staffRoomNumber: fulfillment === "STAFF_ROOM" ? staffRoomNumber : undefined,
-                  scheduledFor: slotStart,
-                  notes,
-                  clientLocation
-                })
-              });
-
-              if (res.razorpay) {
-                await openRazorpayCheckout({
-                  keyId: res.razorpay.keyId,
-                  orderId: res.razorpay.orderId,
-                  amount: res.razorpay.amount,
-                  currency: res.razorpay.currency,
-                  name: user?.name || "SIGCE",
-                  email: user?.email || "",
-                  onSuccess: async (payload) => {
-                    await apiFetch("/api/payments/razorpay/verify", {
-                      method: "POST",
-                      body: JSON.stringify({
-                        orderId: res.order.id,
-                        razorpayOrderId: payload.razorpay_order_id,
-                        razorpayPaymentId: payload.razorpay_payment_id,
-                        razorpaySignature: payload.razorpay_signature
-                      })
-                    });
-                  }
-                });
-              }
-
-              setCart({ items: [] });
-              navigate("/teacher/orders");
-            } catch (e: any) {
-              setError(e instanceof ApiError ? e.message : "Failed to place order");
-            } finally {
-              setBusy(false);
+        <div className="order-cta">
+          <div className="row row-between">
+            <div>
+              <div className="h3">Fast checkout</div>
+              <div className="muted">{itemCount} items · Ready in minutes</div>
+            </div>
+            <div className="price">{formatINR(totalPaise)}</div>
+          </div>
+          <button
+            className="btn primary block"
+            disabled={
+              busy ||
+              !cart.items.length ||
+              !slotStart ||
+              (fulfillment === "STAFF_ROOM" && !staffRoomNumber)
             }
-          }}
-        >
-          Place Order
-        </button>
+            onClick={async () => {
+              setError(null);
+              setBusy(true);
+              try {
+                const clientLocation = geo.status === "ok" ? { lat: geo.lat, lng: geo.lng } : undefined;
+
+                const res = await apiFetch<any>("/api/orders", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    items: cart.items.map((it) => ({ menuItemId: it.id, quantity: it.quantity })),
+                    paymentMethod,
+                    fulfillment,
+                    staffRoomNumber: fulfillment === "STAFF_ROOM" ? staffRoomNumber : undefined,
+                    scheduledFor: slotStart,
+                    clientLocation
+                  })
+                });
+
+                if (res.razorpay) {
+                  await openRazorpayCheckout({
+                    keyId: res.razorpay.keyId,
+                    orderId: res.razorpay.orderId,
+                    amount: res.razorpay.amount,
+                    currency: res.razorpay.currency,
+                    name: user?.name || "SIGCE",
+                    email: user?.email || "",
+                    onSuccess: async (payload) => {
+                      await apiFetch("/api/payments/razorpay/verify", {
+                        method: "POST",
+                        body: JSON.stringify({
+                          orderId: res.order.id,
+                          razorpayOrderId: payload.razorpay_order_id,
+                          razorpayPaymentId: payload.razorpay_payment_id,
+                          razorpaySignature: payload.razorpay_signature
+                        })
+                      });
+                    }
+                  });
+                }
+
+                setCart({ items: [] });
+                navigate("/teacher/orders");
+              } catch (e: any) {
+                setError(e instanceof ApiError ? e.message : "Failed to place order");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Place Order
+          </button>
+        </div>
       </div>
+
+      {staffRoomModalOpen ? (
+        <div className="modal-backdrop" onClick={() => setStaffRoomModalOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="h2">Staff Room Delivery</div>
+                <div className="muted">Enter your staff room number for delivery.</div>
+              </div>
+              <button type="button" className="btn small" onClick={() => setStaffRoomModalOpen(false)}>
+                Close
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="field">
+                <label>Staff Room Number</label>
+                <input
+                  value={staffRoomNumber}
+                  onChange={(e) => setStaffRoomNumber(e.target.value)}
+                  placeholder="e.g. SR-12"
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn primary" onClick={() => setStaffRoomModalOpen(false)}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

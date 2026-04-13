@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
@@ -24,7 +24,6 @@ export function StudentCartPage() {
   const [cart, setCart] = useLocalStorageState<{ items: CartItem[] }>("cart_v1", { items: [] });
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "RAZORPAY">("CASH");
   const [slotStart, setSlotStart] = useState<string>("");
-  const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -34,8 +33,16 @@ export function StudentCartPage() {
   });
 
   const totalPaise = useMemo(() => cart.items.reduce((sum, it) => sum + it.pricePaise * it.quantity, 0), [cart.items]);
+  const itemCount = useMemo(() => cart.items.reduce((sum, it) => sum + it.quantity, 0), [cart.items]);
 
   const availableSlots = (slotsQuery.data?.pickup || []).filter((s) => s.remaining > 0);
+  const selectedSlot = availableSlots.find((s) => s.start === slotStart) ?? availableSlots[0];
+
+  useEffect(() => {
+    if (!slotStart && availableSlots.length) {
+      setSlotStart(availableSlots[0].start);
+    }
+  }, [availableSlots, slotStart]);
 
   return (
     <div className="stack">
@@ -89,33 +96,38 @@ export function StudentCartPage() {
 
       <div className="card">
         <h2 className="h2">Pickup Slot</h2>
-        <p className="muted">Choose a pickup time to reduce crowding near the counter.</p>
+        <p className="muted">We preselect the earliest available slot.</p>
         {slotsQuery.isLoading ? <div className="muted">Loading slots…</div> : null}
         {slotsQuery.isError ? <div className="notice danger">Failed to load slots.</div> : null}
-        <select value={slotStart} onChange={(e) => setSlotStart(e.target.value)} disabled={!availableSlots.length}>
-          <option value="">Select a slot</option>
-          {availableSlots.map((s) => (
-            <option key={s.slotKey} value={s.start}>
-              {new Date(s.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (Remaining {s.remaining})
-            </option>
-          ))}
-        </select>
+        {!slotsQuery.isLoading && !slotsQuery.isError && selectedSlot ? (
+          <div className="notice">
+            Pickup at {new Date(selectedSlot.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Remaining {selectedSlot.remaining}
+          </div>
+        ) : null}
+        {!slotsQuery.isLoading && !slotsQuery.isError && !selectedSlot ? (
+          <div className="hint danger">No slots available.</div>
+        ) : null}
       </div>
 
       <div className="card">
         <h2 className="h2">Payment</h2>
         <div className="row">
-          <label className="pill">
-            <input type="radio" checked={paymentMethod === "CASH"} onChange={() => setPaymentMethod("CASH")} /> Cash
-          </label>
-          <label className="pill">
-            <input type="radio" checked={paymentMethod === "RAZORPAY"} onChange={() => setPaymentMethod("RAZORPAY")} /> Online
-          </label>
-        </div>
-
-        <div className="field">
-          <label>Notes (optional)</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any instructions..." />
+          <button
+            type="button"
+            className={`btn payment-toggle ${paymentMethod === "CASH" ? "primary" : ""}`}
+            aria-pressed={paymentMethod === "CASH"}
+            onClick={() => setPaymentMethod("CASH")}
+          >
+            Cash
+          </button>
+          <button
+            type="button"
+            className={`btn payment-toggle ${paymentMethod === "RAZORPAY" ? "primary" : ""}`}
+            aria-pressed={paymentMethod === "RAZORPAY"}
+            onClick={() => setPaymentMethod("RAZORPAY")}
+          >
+            Online
+          </button>
         </div>
 
         {geofenceEnabled ? (
@@ -136,60 +148,68 @@ export function StudentCartPage() {
 
         {error ? <div className="notice danger">{error}</div> : null}
 
-        <button
-          className="btn primary"
-          disabled={busy || !cart.items.length || !slotStart}
-          onClick={async () => {
-            setError(null);
-            setBusy(true);
-            try {
-              const clientLocation = geo.status === "ok" ? { lat: geo.lat, lng: geo.lng } : undefined;
+        <div className="order-cta">
+          <div className="row row-between">
+            <div>
+              <div className="h3">Fast checkout</div>
+              <div className="muted">{itemCount} items · Ready in minutes</div>
+            </div>
+            <div className="price">{formatINR(totalPaise)}</div>
+          </div>
+          <button
+            className="btn primary block"
+            disabled={busy || !cart.items.length || !slotStart}
+            onClick={async () => {
+              setError(null);
+              setBusy(true);
+              try {
+                const clientLocation = geo.status === "ok" ? { lat: geo.lat, lng: geo.lng } : undefined;
 
-              const res = await apiFetch<any>("/api/orders", {
-                method: "POST",
-                body: JSON.stringify({
-                  items: cart.items.map((it) => ({ menuItemId: it.id, quantity: it.quantity })),
-                  paymentMethod,
-                  fulfillment: "PICKUP",
-                  scheduledFor: slotStart,
-                  notes,
-                  clientLocation
-                })
-              });
-
-              if (res.razorpay) {
-                await openRazorpayCheckout({
-                  keyId: res.razorpay.keyId,
-                  orderId: res.razorpay.orderId,
-                  amount: res.razorpay.amount,
-                  currency: res.razorpay.currency,
-                  name: user?.name || "SIGCE",
-                  email: user?.email || "",
-                  onSuccess: async (payload) => {
-                    await apiFetch("/api/payments/razorpay/verify", {
-                      method: "POST",
-                      body: JSON.stringify({
-                        orderId: res.order.id,
-                        razorpayOrderId: payload.razorpay_order_id,
-                        razorpayPaymentId: payload.razorpay_payment_id,
-                        razorpaySignature: payload.razorpay_signature
-                      })
-                    });
-                  }
+                const res = await apiFetch<any>("/api/orders", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    items: cart.items.map((it) => ({ menuItemId: it.id, quantity: it.quantity })),
+                    paymentMethod,
+                    fulfillment: "PICKUP",
+                    scheduledFor: slotStart,
+                    clientLocation
+                  })
                 });
-              }
 
-              setCart({ items: [] });
-              navigate("/student/orders");
-            } catch (e: any) {
-              setError(e instanceof ApiError ? e.message : "Failed to place order");
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Place Order
-        </button>
+                if (res.razorpay) {
+                  await openRazorpayCheckout({
+                    keyId: res.razorpay.keyId,
+                    orderId: res.razorpay.orderId,
+                    amount: res.razorpay.amount,
+                    currency: res.razorpay.currency,
+                    name: user?.name || "SIGCE",
+                    email: user?.email || "",
+                    onSuccess: async (payload) => {
+                      await apiFetch("/api/payments/razorpay/verify", {
+                        method: "POST",
+                        body: JSON.stringify({
+                          orderId: res.order.id,
+                          razorpayOrderId: payload.razorpay_order_id,
+                          razorpayPaymentId: payload.razorpay_payment_id,
+                          razorpaySignature: payload.razorpay_signature
+                        })
+                      });
+                    }
+                  });
+                }
+
+                setCart({ items: [] });
+                navigate("/student/orders");
+              } catch (e: any) {
+                setError(e instanceof ApiError ? e.message : "Failed to place order");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Place Order
+          </button>
+        </div>
       </div>
     </div>
   );

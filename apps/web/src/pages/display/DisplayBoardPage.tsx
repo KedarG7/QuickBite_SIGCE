@@ -40,7 +40,7 @@ export function DisplayBoardPage() {
   }, [qc]);
 
   const queue = q.data?.queue || [];
-  const byStatus = (s: QueueItem["status"]) => queue.filter((x) => x.status === s);
+  const ready = queue.filter((x) => x.status === "READY");
 
   return (
     <div className="display">
@@ -52,9 +52,7 @@ export function DisplayBoardPage() {
       </div>
 
       <div className="display-grid">
-        <Column title="NEW" items={byStatus("NEW")} />
-        <Column title="PREPARING" items={byStatus("PREPARING")} />
-        <Column title="READY" items={byStatus("READY")} />
+        <Column title="READY" items={ready} />
       </div>
     </div>
   );
