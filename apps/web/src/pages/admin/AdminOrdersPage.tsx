@@ -28,7 +28,14 @@ function isoDay(d = new Date()) {
 export function AdminOrdersPage() {
   const qc = useQueryClient();
   const [day, setDay] = useState(() => isoDay());
-  const [status, setStatus] = useState<string>("");
+  const statusList = ["AWAITING_PAYMENT", "NEW", "PREPARING", "READY", "COMPLETED", "CANCELLED"] as const;
+  const statusActions = ["NEW", "PREPARING", "READY", "COMPLETED", "CANCELLED"] as const;
+
+  const statusTone = (value: string) => {
+    if (value === "READY" || value === "COMPLETED") return "ok";
+    if (value === "CANCELLED" || value === "FAILED") return "danger";
+    return "warn";
+  };
 
   useEffect(() => {
     const apiBase = (import.meta.env.VITE_API_BASE as string | undefined) || "";
@@ -40,10 +47,10 @@ export function AdminOrdersPage() {
   }, [qc]);
 
   const ordersQuery = useQuery({
-    queryKey: ["adminOrders", day, status],
+    queryKey: ["adminOrders", day],
     queryFn: () =>
       apiFetch<{ orders: Order[] }>(
-        `/api/admin/orders?day=${encodeURIComponent(day)}${status ? `&status=${encodeURIComponent(status)}` : ""}&limit=200`
+        `/api/admin/orders?day=${encodeURIComponent(day)}&limit=200`
       ),
     refetchInterval: 10_000
   });
@@ -60,11 +67,14 @@ export function AdminOrdersPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["adminOrders"] })
   });
 
+  const mutationError =
+    (statusMutation.error as Error | undefined)?.message || (paymentMutation.error as Error | undefined)?.message;
+
   const orders = ordersQuery.data?.orders || [];
   const counts = useMemo(() => {
     const map = new Map<string, number>();
     for (const o of orders) map.set(o.status, (map.get(o.status) ?? 0) + 1);
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return statusList.map((statusKey) => [statusKey, map.get(statusKey) ?? 0] as const);
   }, [orders]);
 
   return (
@@ -76,51 +86,42 @@ export function AdminOrdersPage() {
             <label>Day</label>
             <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
           </div>
-          <div className="field" style={{ minWidth: 180 }}>
-            <label>Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All</option>
-              <option value="NEW">NEW</option>
-              <option value="PREPARING">PREPARING</option>
-              <option value="READY">READY</option>
-              <option value="COMPLETED">COMPLETED</option>
-              <option value="CANCELLED">CANCELLED</option>
-              <option value="AWAITING_PAYMENT">AWAITING_PAYMENT</option>
-            </select>
-          </div>
         </div>
-        {counts.length ? (
-          <div className="row">
-            {counts.map(([k, v]) => (
-              <div key={k} className="pill">
-                {k}: {v}
-              </div>
-            ))}
-          </div>
-        ) : null}
+        <div className="row">
+          {counts.map(([k, v]) => (
+            <div key={k} className={`badge ${statusTone(k)}`}>
+              {k}: {v}
+            </div>
+          ))}
+        </div>
       </div>
 
       {ordersQuery.isLoading ? <div className="card">Loading…</div> : null}
       {ordersQuery.isError ? <div className="card">Failed to load orders.</div> : null}
+      {mutationError ? <div className="notice danger">{mutationError}</div> : null}
 
       {orders.map((o) => (
         <div key={o.id} className="card">
           <div className="row row-between">
             <div className="token">TOKEN {o.token}</div>
-            <div className="row" style={{ marginTop: 0 }}>
-              <select
-                value={o.status}
-                onChange={(e) => statusMutation.mutate({ id: o.id, status: e.target.value })}
+            <div className={`badge ${statusTone(o.status)}`}>{o.status}</div>
+          </div>
+          <div className="status-actions">
+            {statusActions.map((next) => (
+              <button
+                key={next}
+                className={`btn small status-action ${o.status === next ? "primary" : "ghost"}`}
                 disabled={statusMutation.isPending}
+                onClick={() => {
+                  if ((next === "CANCELLED" || next === "COMPLETED") && !window.confirm(`Mark order ${o.token} as ${next}?`)) {
+                    return;
+                  }
+                  statusMutation.mutate({ id: o.id, status: next });
+                }}
               >
-                <option value="AWAITING_PAYMENT">AWAITING_PAYMENT</option>
-                <option value="NEW">NEW</option>
-                <option value="PREPARING">PREPARING</option>
-                <option value="READY">READY</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="CANCELLED">CANCELLED</option>
-              </select>
-            </div>
+                {next}
+              </button>
+            ))}
           </div>
           <div className="muted">
             {o.fulfillment === "STAFF_ROOM" ? `Staff room ${o.staffRoomNumber}` : "Pickup"} ·{" "}

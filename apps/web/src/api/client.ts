@@ -24,7 +24,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   const text = await res.text();
-  const data = text ? (JSON.parse(text) as any) : null;
+  const contentType = res.headers.get("content-type") || "";
+  let data: any = null;
+  if (text) {
+    if (contentType.includes("application/json")) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { message: "Invalid JSON response" };
+      }
+    } else {
+      data = { message: text };
+    }
+  }
 
   if (!res.ok) {
     const msg = data?.message || data?.error || `Request failed (${res.status})`;

@@ -17,7 +17,8 @@ displayRouter.get("/queue", async (req, res) => {
   const day = parsed.data.day ?? isoDay(nowInZone())!;
   const orders = await Order.find({
     day,
-    status: { $in: ["NEW", "PREPARING", "READY"] }
+    status: "READY",
+    paymentStatus: "PAID"
   })
     .sort({ token: 1 })
     .lean();

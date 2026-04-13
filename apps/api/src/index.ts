@@ -11,11 +11,12 @@ import { connectToMongo, disconnectFromMongo } from "./lib/db.js";
 import { env } from "./lib/env.js";
 import { attachSocket, socket } from "./lib/socket.js";
 import { apiRouter } from "./routes/api.js";
-import { seedAdminUser } from "./seed/seedAdmin.js";
+import { seedAdminUser, seedMenuItems } from "./seed/seedAdmin.js";
 
 async function main() {
   await connectToMongo();
   await seedAdminUser();
+  await seedMenuItems();
 
   const app = express();
 

@@ -46,7 +46,7 @@ paymentsRouter.post("/razorpay/verify", requireAuth, async (req, res) => {
   if (signed !== body.data.razorpaySignature) return res.status(400).json({ error: "INVALID_SIGNATURE" });
 
   order.paymentStatus = "PAID";
-  order.status = "NEW";
+  order.status = "READY";
   order.razorpay = { orderId: body.data.razorpayOrderId, paymentId: body.data.razorpayPaymentId };
   await order.save();
 

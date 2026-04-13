@@ -65,7 +65,13 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: () => apiFetch<{ ok: true }>("/api/auth/logout", { method: "POST", body: JSON.stringify({}) }),
-    onSuccess: () => setUser(null)
+    onSuccess: () => {
+      setUser(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("cart_student_v1");
+        window.localStorage.removeItem("cart_teacher_v1");
+      }
+    }
   });
 
   const value: AuthContextValue = {

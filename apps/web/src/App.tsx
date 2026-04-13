@@ -1,4 +1,5 @@
-import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { InstallPrompt } from "./components/InstallPrompt";
@@ -27,6 +28,10 @@ export function App() {
 
 function Shell() {
   const { user, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const displayName = user?.name || user?.email || "User";
+  const avatarInitial = displayName.trim().charAt(0).toUpperCase();
 
   return (
     <div className="app-shell">
@@ -36,14 +41,16 @@ function Shell() {
         </Link>
         <nav className="topnav">
           {!isLoading && user?.role === "ADMIN" ? <Link to="/admin/orders">Admin</Link> : null}
-          <Link to="/display">TV Display</Link>
+          {!isLoading && user?.role === "ADMIN" ? <Link to="/display">TV Display</Link> : null}
           {!isLoading && user ? (
-            <button className="link-btn" onClick={logout}>
-              Logout
+            <button type="button" className="user-chip" onClick={() => setProfileOpen(true)}>
+              <span className="user-avatar" aria-hidden="true">
+                {avatarInitial}
+              </span>
+              <span className="user-name">{displayName}</span>
             </button>
-          ) : (
-            <Link to="/login">Login</Link>
-          )}
+          ) : null}
+          {!isLoading && !user ? <Link to="/login">Login</Link> : null}
         </nav>
       </header>
 
@@ -75,11 +82,86 @@ function Shell() {
             <Route path="announcements" element={<AdminAnnouncementsPage />} />
             <Route path="summary" element={<AdminSummaryPage />} />
           </Route>
-          <Route path="/display" element={<DisplayBoardPage />} />
+          <Route
+            path="/display"
+            element={
+              <RequireAdminOnly>
+                <DisplayBoardPage />
+              </RequireAdminOnly>
+            }
+          />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
+
+      {profileOpen && user ? (
+        <div className="modal-backdrop" onClick={() => setProfileOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="h2">Profile</div>
+                <div className="muted">
+                  {user.role === "STUDENT" ? "Student" : user.role === "TEACHER" ? "Teacher" : "Admin"}
+                </div>
+              </div>
+              <button type="button" className="btn small" onClick={() => setProfileOpen(false)}>
+                Close
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="card profile-summary">
+                <div className="row row-between">
+                  <div>
+                    <div className="item-title">{displayName}</div>
+                    {user.email ? <div className="muted">{user.email}</div> : null}
+                  </div>
+                  <div className="user-avatar" aria-hidden="true">
+                    {avatarInitial}
+                  </div>
+                </div>
+              </div>
+
+              {user.role === "STUDENT" ? (
+                <StudentOrdersPage />
+              ) : user.role === "TEACHER" ? (
+                <TeacherOrdersPage />
+              ) : (
+                <div className="card">
+                  <div className="h2">Admin Shortcuts</div>
+                  <div className="stack mini">
+                    <Link className="btn" to="/admin/orders" onClick={() => setProfileOpen(false)}>
+                      View Orders
+                    </Link>
+                    <Link className="btn" to="/admin/menu" onClick={() => setProfileOpen(false)}>
+                      Manage Menu
+                    </Link>
+                    <Link className="btn" to="/admin/announcements" onClick={() => setProfileOpen(false)}>
+                      Update Announcements
+                    </Link>
+                    <Link className="btn" to="/admin/summary" onClick={() => setProfileOpen(false)}>
+                      View Summary
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn"
+                type="button"
+                onClick={async () => {
+                  setProfileOpen(false);
+                  await logout();
+                  navigate("/login", { replace: true });
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -173,6 +255,16 @@ function RequireAdmin() {
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
 
   return <AdminShell />;
+}
+
+function RequireAdminOnly(props: { children: JSX.Element }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return <div className="card">Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "ADMIN") return <Navigate to="/" replace />;
+
+  return props.children;
 }
 
 function AdminShell() {

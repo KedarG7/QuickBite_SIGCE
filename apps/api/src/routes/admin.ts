@@ -196,7 +196,12 @@ adminRouter.patch("/orders/:id/payment", async (req, res) => {
   if (order.paymentMethod !== "CASH") return res.status(400).json({ error: "ONLY_CASH_CAN_BE_MARKED" });
 
   order.paymentStatus = parsed.data.paymentStatus === "PAID" ? "PAID" : "DUE";
+  if (order.paymentStatus === "PAID" && order.status !== "CANCELLED" && order.status !== "COMPLETED") {
+    order.status = "READY";
+  }
   await order.save();
+
+  socket.emitQueueUpdate({ updatedAt: new Date().toISOString() });
 
   return res.json({ ok: true });
 });
