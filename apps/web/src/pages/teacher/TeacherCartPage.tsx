@@ -22,7 +22,7 @@ export function TeacherCartPage() {
   const geofenceEnabled = String(import.meta.env.VITE_ENFORCE_GEOFENCE) === "true";
   const geo = useGeoLocation(geofenceEnabled);
 
-  const [cart, setCart] = useLocalStorageState<{ items: CartItem[] }>("cart_v1", { items: [] });
+  const [cart, setCart] = useLocalStorageState<{ items: CartItem[] }>("cart_teacher_v1", { items: [] });
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "RAZORPAY">("CASH");
   const [fulfillment, setFulfillment] = useState<"PICKUP" | "STAFF_ROOM">("PICKUP");
   const [slotStart, setSlotStart] = useState<string>("");

@@ -21,7 +21,7 @@ export function StudentCartPage() {
   const geofenceEnabled = String(import.meta.env.VITE_ENFORCE_GEOFENCE) === "true";
   const geo = useGeoLocation(geofenceEnabled);
 
-  const [cart, setCart] = useLocalStorageState<{ items: CartItem[] }>("cart_v1", { items: [] });
+  const [cart, setCart] = useLocalStorageState<{ items: CartItem[] }>("cart_student_v1", { items: [] });
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "RAZORPAY">("CASH");
   const [slotStart, setSlotStart] = useState<string>("");
   const [error, setError] = useState<string | null>(null);

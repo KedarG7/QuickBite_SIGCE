@@ -67,6 +67,9 @@ export function AdminOrdersPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["adminOrders"] })
   });
 
+  const mutationError =
+    (statusMutation.error as Error | undefined)?.message || (paymentMutation.error as Error | undefined)?.message;
+
   const orders = ordersQuery.data?.orders || [];
   const counts = useMemo(() => {
     const map = new Map<string, number>();
@@ -95,6 +98,7 @@ export function AdminOrdersPage() {
 
       {ordersQuery.isLoading ? <div className="card">Loading…</div> : null}
       {ordersQuery.isError ? <div className="card">Failed to load orders.</div> : null}
+      {mutationError ? <div className="notice danger">{mutationError}</div> : null}
 
       {orders.map((o) => (
         <div key={o.id} className="card">
@@ -108,7 +112,12 @@ export function AdminOrdersPage() {
                 key={next}
                 className={`btn small status-action ${o.status === next ? "primary" : "ghost"}`}
                 disabled={statusMutation.isPending}
-                onClick={() => statusMutation.mutate({ id: o.id, status: next })}
+                onClick={() => {
+                  if ((next === "CANCELLED" || next === "COMPLETED") && !window.confirm(`Mark order ${o.token} as ${next}?`)) {
+                    return;
+                  }
+                  statusMutation.mutate({ id: o.id, status: next });
+                }}
               >
                 {next}
               </button>

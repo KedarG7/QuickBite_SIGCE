@@ -30,6 +30,12 @@ export function TeacherOrdersPage() {
         <p className="muted">Staff room delivery is available only for lunch preorder before the cutoff.</p>
       </div>
 
+      {q.isLoading ? <div className="card">Loading…</div> : null}
+      {q.isError ? <div className="card">Failed to load orders.</div> : null}
+      {!q.isLoading && !q.isError && !(q.data?.orders || []).length ? (
+        <div className="card">No orders yet.</div>
+      ) : null}
+
       {(q.data?.orders || []).map((o) => (
         <div key={o.id} className="card">
           <div className="row row-between">

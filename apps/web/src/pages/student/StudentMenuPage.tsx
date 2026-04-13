@@ -19,7 +19,7 @@ export function StudentMenuPage() {
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("Breakfast");
-  const [cart, setCart] = useLocalStorageState<{ items: Array<MenuItem & { quantity: number }> }>("cart_v1", {
+  const [cart, setCart] = useLocalStorageState<{ items: Array<MenuItem & { quantity: number }> }>("cart_student_v1", {
     items: []
   });
   const totalCount = cart.items.reduce((a, b) => a + b.quantity, 0);
