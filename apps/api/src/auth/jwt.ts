@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { type Secret, type SignOptions } from "jsonwebtoken";
 import type { Response } from "express";
 
 import { env } from "../lib/env.js";
@@ -10,9 +10,11 @@ type AuthTokenPayload = {
 };
 
 export function signAuthToken(payload: AuthTokenPayload) {
-  const secret = env.JWT_SECRET as jwt.Secret;
-  const expiresIn = env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"];
-  return jwt.sign(payload, secret, { expiresIn });
+  const secret: Secret = env.JWT_SECRET;
+  const expiresIn: SignOptions["expiresIn"] = /^\d+$/.test(env.JWT_EXPIRES_IN)
+    ? Number(env.JWT_EXPIRES_IN)
+    : (env.JWT_EXPIRES_IN as SignOptions["expiresIn"]);
+  return jwt.sign(payload, secret, { expiresIn } as SignOptions);
 }
 
 export function verifyAuthToken(token: string) {
