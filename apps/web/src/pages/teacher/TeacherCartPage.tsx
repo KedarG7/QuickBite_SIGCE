@@ -21,6 +21,7 @@ export function TeacherCartPage() {
 
   const geofenceEnabled = String(import.meta.env.VITE_ENFORCE_GEOFENCE) === "true";
   const geo = useGeoLocation(geofenceEnabled);
+  const razorpayEnabled = String(import.meta.env.VITE_RAZORPAY_ENABLED) === "true";
 
   const [cart, setCart] = useLocalStorageState<{ items: CartItem[] }>("cart_teacher_v1", { items: [] });
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "RAZORPAY">("CASH");
@@ -50,6 +51,12 @@ export function TeacherCartPage() {
       setSlotStart(availableSlots[0].start);
     }
   }, [availableSlots, slotStart]);
+
+  useEffect(() => {
+    if (!razorpayEnabled && paymentMethod === "RAZORPAY") {
+      setPaymentMethod("CASH");
+    }
+  }, [paymentMethod, razorpayEnabled]);
 
   return (
     <div className="stack">
@@ -174,11 +181,14 @@ export function TeacherCartPage() {
             type="button"
             className={`btn payment-toggle ${paymentMethod === "RAZORPAY" ? "primary" : ""}`}
             aria-pressed={paymentMethod === "RAZORPAY"}
+            disabled={!razorpayEnabled}
             onClick={() => setPaymentMethod("RAZORPAY")}
           >
             Online
           </button>
         </div>
+
+        {!razorpayEnabled ? <div className="notice warn">Online payment temporarily unavailable.</div> : null}
 
         {geofenceEnabled ? (
           <div className="notice warn">

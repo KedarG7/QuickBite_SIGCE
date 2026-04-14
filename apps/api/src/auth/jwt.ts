@@ -10,9 +10,9 @@ type AuthTokenPayload = {
 };
 
 export function signAuthToken(payload: AuthTokenPayload) {
-  return jwt.sign(payload, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN
-  });
+  const secret = env.JWT_SECRET as jwt.Secret;
+  const expiresIn = env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"];
+  return jwt.sign(payload, secret, { expiresIn });
 }
 
 export function verifyAuthToken(token: string) {
