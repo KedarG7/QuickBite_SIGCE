@@ -5,7 +5,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, formatINR } from "../../api/client";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 
-type MenuItem = { id: string; name: string; category: string; pricePaise: number; available: boolean };
+type MenuItem = {
+  id: string;
+  name: string;
+  category: string;
+  pricePaise: number;
+  available: boolean;
+  imageUrl?: string | null;
+};
 type CategoryKey = "Breakfast" | "Lunch" | "Snacks";
 
 export function TeacherMenuPage() {
@@ -90,6 +97,7 @@ export function TeacherMenuPage() {
           <div className="grid">
             {items.map((item) => (
               <div key={item.id} className="card item-card">
+                {item.imageUrl ? <img className="item-image" src={item.imageUrl} alt={item.name} loading="lazy" /> : null}
                 <div className="row row-between">
                   <div>
                     <div className="item-title">{item.name}</div>

@@ -214,7 +214,8 @@ adminRouter.get("/menu", async (_req, res) => {
       name: i.name,
       category: i.category,
       pricePaise: i.pricePaise,
-      available: i.available
+      available: i.available,
+      imageUrl: i.imageUrl ?? null
     }))
   });
 });
@@ -225,7 +226,8 @@ adminRouter.post("/menu", async (req, res) => {
       name: z.string().trim().min(1).max(80),
       category: z.string().trim().min(1).max(40),
       priceRupees: z.coerce.number().min(0).max(10_000),
-      available: z.coerce.boolean().optional()
+      available: z.coerce.boolean().optional(),
+      imageUrl: z.string().trim().max(200).optional()
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "INVALID_BODY" });
@@ -234,7 +236,8 @@ adminRouter.post("/menu", async (req, res) => {
     name: parsed.data.name,
     category: parsed.data.category,
     pricePaise: Math.round(parsed.data.priceRupees * 100),
-    available: parsed.data.available ?? true
+    available: parsed.data.available ?? true,
+    imageUrl: parsed.data.imageUrl
   });
 
   res.status(201).json({
@@ -243,7 +246,8 @@ adminRouter.post("/menu", async (req, res) => {
       name: item.name,
       category: item.category,
       pricePaise: item.pricePaise,
-      available: item.available
+      available: item.available,
+      imageUrl: item.imageUrl ?? null
     }
   });
 });
@@ -257,7 +261,8 @@ adminRouter.patch("/menu/:id", async (req, res) => {
       name: z.string().trim().min(1).max(80).optional(),
       category: z.string().trim().min(1).max(40).optional(),
       priceRupees: z.coerce.number().min(0).max(10_000).optional(),
-      available: z.coerce.boolean().optional()
+      available: z.coerce.boolean().optional(),
+      imageUrl: z.string().trim().max(200).optional()
     })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "INVALID_BODY" });
@@ -267,6 +272,7 @@ adminRouter.patch("/menu/:id", async (req, res) => {
   if (parsed.data.category !== undefined) update.category = parsed.data.category;
   if (parsed.data.priceRupees !== undefined) update.pricePaise = Math.round(parsed.data.priceRupees * 100);
   if (parsed.data.available !== undefined) update.available = parsed.data.available;
+  if (parsed.data.imageUrl !== undefined) update.imageUrl = parsed.data.imageUrl || null;
 
   const item = await MenuItem.findByIdAndUpdate(id, { $set: update }, { new: true }).lean();
   if (!item) return res.status(404).json({ error: "NOT_FOUND" });
