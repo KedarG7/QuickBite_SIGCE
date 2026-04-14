@@ -215,7 +215,10 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
 
   const token = await nextToken(day);
 
-  const paymentMethod = parsed.data.paymentMethod;
+  let paymentMethod = parsed.data.paymentMethod;
+  if (paymentMethod === "RAZORPAY" && (!razorpay || !env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET)) {
+    paymentMethod = "CASH";
+  }
   const staffRoomNumber =
     fulfillment === "STAFF_ROOM" ? parsed.data.staffRoomNumber ?? user.staffRoomNumber ?? undefined : undefined;
 
@@ -224,17 +227,13 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
   }
 
   if (paymentMethod === "RAZORPAY") {
-    if (!razorpay || !env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
-      return res.status(501).json({ error: "RAZORPAY_NOT_CONFIGURED" });
-    }
-
     const receipt = `${day}-T${token}`;
-    const rpOrder = await razorpay.orders.create({
+    const rpOrder = (await razorpay.orders.create({
       amount: totalPaise,
       currency: "INR",
       receipt,
-      payment_capture: 1
-    });
+      payment_capture: true
+    })) as { id: string; amount: number; currency: string };
 
     const order = await Order.create({
       day,
@@ -254,6 +253,9 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
       razorpay: { orderId: rpOrder.id },
       status: "AWAITING_PAYMENT"
     });
+
+    socket.emitOrderNew({ orderId: String(order._id), token: order.token, status: order.status });
+    socket.emitQueueUpdate({ updatedAt: new Date().toISOString() });
 
     return res.json({
       order: {
