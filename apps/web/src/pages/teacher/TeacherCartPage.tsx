@@ -250,11 +250,13 @@ export function TeacherCartPage() {
                           razorpaySignature: payload.razorpay_signature
                         })
                       });
+                      setCart({ items: [] });
                     }
                   });
+                } else {
+                  setCart({ items: [] });
                 }
 
-                setCart({ items: [] });
                 navigate("/teacher/orders");
               } catch (e: any) {
                 setError(e instanceof ApiError ? e.message : "Failed to place order");
