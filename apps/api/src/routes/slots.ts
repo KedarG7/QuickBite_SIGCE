@@ -62,7 +62,7 @@ slotsRouter.get("/", requireAuth, enforceCollegeHours, async (req, res) => {
     const key = makeSlotKey(dt);
     const used = pickupCounts.get(key) ?? 0;
     return {
-      start: dt.toISO(),
+      start: dt.toISO() ?? dt.toFormat("yyyy-LL-dd'T'HH:mm"),
       slotKey: key,
       remaining: Math.max(0, capacity - used)
     };
@@ -82,7 +82,7 @@ slotsRouter.get("/", requireAuth, enforceCollegeHours, async (req, res) => {
         const key = makeSlotKey(dt);
         const used = lunchCounts.get(key) ?? 0;
         staffRoomLunch.push({
-          start: dt.toISO(),
+          start: dt.toISO() ?? dt.toFormat("yyyy-LL-dd'T'HH:mm"),
           slotKey: key,
           remaining: Math.max(0, capacity - used)
         });
@@ -91,7 +91,7 @@ slotsRouter.get("/", requireAuth, enforceCollegeHours, async (req, res) => {
   }
 
   res.json({
-    now: now.toISO(),
+    now: now.toISO() ?? now.toFormat("yyyy-LL-dd'T'HH:mm"),
     rules: {
       slotMinutes,
       capacity,
