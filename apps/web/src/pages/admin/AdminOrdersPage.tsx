@@ -43,7 +43,9 @@ export function AdminOrdersPage() {
     const s = io(socketUrl, { withCredentials: true });
     s.on("order:new", () => qc.invalidateQueries({ queryKey: ["adminOrders"] }));
     s.on("queue:update", () => qc.invalidateQueries({ queryKey: ["adminOrders"] }));
-    return () => s.disconnect();
+    return () => {
+      s.disconnect();
+    };
   }, [qc]);
 
   const ordersQuery = useQuery({
