@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { apiFetch, formatINR } from "../../api/client";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
@@ -20,15 +20,18 @@ export function TeacherMenuPage() {
     queryKey: ["menu"],
     queryFn: () => apiFetch<{ menuItems: MenuItem[] }>("/api/menu")
   });
+  const location = useLocation();
   const navigate = useNavigate();
   const promptTimer = useRef<number | undefined>(undefined);
   const [quickPrompt, setQuickPrompt] = useState<{ name: string; count: number } | null>(null);
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("Breakfast");
-  const [cart, setCart] = useLocalStorageState<{ items: Array<MenuItem & { quantity: number }> }>("cart_teacher_v1", {
-    items: []
-  });
+  const [cart, setCart] = useLocalStorageState<{ items: Array<MenuItem & { quantity: number }> }>(
+    "cart_teacher_v1",
+    { items: [] },
+    [location.pathname]
+  );
   const totalCount = cart.items.reduce((a, b) => a + b.quantity, 0);
 
   const filtered = useMemo(() => {

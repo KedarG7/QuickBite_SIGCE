@@ -201,6 +201,7 @@ export function StudentCartPage() {
                   setCart({ items: [] });
                 }
 
+                setCart({ items: [] });
                 navigate("/student/orders");
               } catch (e: any) {
                 setError(e instanceof ApiError ? e.message : "Failed to place order");
