@@ -30,7 +30,7 @@ export function verifyAuthToken(token: string) {
 export function setAuthCookie(res: Response, token: string) {
   res.cookie(env.COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: env.COOKIE_SAMESITE,
     secure: env.NODE_ENV === "production",
     path: "/"
   });

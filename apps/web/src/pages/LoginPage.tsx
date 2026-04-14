@@ -26,7 +26,7 @@ export function LoginPage() {
 
         <div className="field">
           <label>Email</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="2024ci19f@sigce.edu.in" />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="2024xxxxx@sigce.edu.in" />
         </div>
         <div className="field">
           <label>Password</label>

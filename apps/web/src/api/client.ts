@@ -12,6 +12,16 @@ export class ApiError extends Error {
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "";
+const SOCKET_BASE = (import.meta.env.VITE_SOCKET_BASE as string | undefined) || API_BASE;
+const SOCKET_ENABLED = (import.meta.env.VITE_ENABLE_SOCKET as string | undefined) !== "false";
+
+export function getSocketBase() {
+  return SOCKET_BASE || window.location.origin;
+}
+
+export function isSocketEnabled() {
+  return SOCKET_ENABLED;
+}
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
