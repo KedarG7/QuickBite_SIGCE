@@ -13,6 +13,7 @@ const schema = z.object({
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters").default("please-change-me-please-change-me"),
   JWT_EXPIRES_IN: z.string().default("7d"),
   COOKIE_NAME: z.string().default("sigce_canteen_session"),
+  COOKIE_SAMESITE: z.enum(["lax", "none", "strict"]).default("lax"),
 
   STUDENT_EMAIL_REGEX: z.string().default("^\\\\d{4}ci\\\\d{2}f@sigce\\\\.edu\\\\.in$"),
   TEACHER_EMAIL_DOMAIN: z.string().default("sigce.edu.in"),

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io } from "socket.io-client";
 
-import { apiFetch, formatINR } from "../../api/client";
+import { apiFetch, formatINR, getSocketBase, isSocketEnabled } from "../../api/client";
 
 type Order = {
   id: string;
@@ -38,8 +38,8 @@ export function AdminOrdersPage() {
   };
 
   useEffect(() => {
-    const apiBase = (import.meta.env.VITE_API_BASE as string | undefined) || "";
-    const socketUrl = apiBase || window.location.origin;
+    if (!isSocketEnabled()) return;
+    const socketUrl = getSocketBase();
     const s = io(socketUrl, { withCredentials: true });
     s.on("order:new", () => qc.invalidateQueries({ queryKey: ["adminOrders"] }));
     s.on("queue:update", () => qc.invalidateQueries({ queryKey: ["adminOrders"] }));

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { io } from "socket.io-client";
 
-import { apiFetch } from "../../api/client";
+import { apiFetch, getSocketBase, isSocketEnabled } from "../../api/client";
 
 type QueueItem = {
   token: number;
@@ -18,8 +18,6 @@ type QueueResponse = {
   queue: QueueItem[];
 };
 
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "";
-
 export function DisplayBoardPage() {
   const qc = useQueryClient();
   const q = useQuery({
@@ -29,7 +27,8 @@ export function DisplayBoardPage() {
   });
 
   useEffect(() => {
-    const socketUrl = API_BASE || window.location.origin;
+    if (!isSocketEnabled()) return;
+    const socketUrl = getSocketBase();
     const s = io(socketUrl, { withCredentials: true });
     s.on("queue:update", () => {
       qc.invalidateQueries({ queryKey: ["displayQueue"] });

@@ -20,7 +20,7 @@ async function main() {
 
   const app = express();
 
-  app.set("trust proxy", false);
+  app.set("trust proxy", env.NODE_ENV === "production" ? 1 : false);
   app.use(helmet());
   app.use(
     cors({

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: sigce-canteen-api
+    env: node
+    rootDir: apps/api
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: true
