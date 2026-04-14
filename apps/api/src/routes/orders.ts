@@ -227,8 +227,9 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
   }
 
   if (paymentMethod === "RAZORPAY") {
+    const rp = razorpay as NonNullable<typeof razorpay>;
     const receipt = `${day}-T${token}`;
-    const rpOrder = (await razorpay.orders.create({
+    const rpOrder = (await rp.orders.create({
       amount: totalPaise,
       currency: "INR",
       receipt,
