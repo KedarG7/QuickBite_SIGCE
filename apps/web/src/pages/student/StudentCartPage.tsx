@@ -194,8 +194,11 @@ export function StudentCartPage() {
                           razorpaySignature: payload.razorpay_signature
                         })
                       });
+                      setCart({ items: [] });
                     }
                   });
+                } else {
+                  setCart({ items: [] });
                 }
 
                 setCart({ items: [] });

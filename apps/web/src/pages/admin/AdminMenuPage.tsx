@@ -3,7 +3,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch, formatINR } from "../../api/client";
 
-type MenuItem = { id: string; name: string; category: string; pricePaise: number; available: boolean };
+type MenuItem = {
+  id: string;
+  name: string;
+  category: string;
+  pricePaise: number;
+  available: boolean;
+  imageUrl?: string | null;
+};
 
 export function AdminMenuPage() {
   const qc = useQueryClient();
@@ -15,15 +22,23 @@ export function AdminMenuPage() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Snacks");
   const [priceRupees, setPriceRupees] = useState("20");
+  const [imageUrl, setImageUrl] = useState("");
 
   const createMutation = useMutation({
     mutationFn: () =>
       apiFetch("/api/admin/menu", {
         method: "POST",
-        body: JSON.stringify({ name, category, priceRupees: Number(priceRupees), available: true })
+        body: JSON.stringify({
+          name,
+          category,
+          priceRupees: Number(priceRupees),
+          available: true,
+          imageUrl: imageUrl.trim() || undefined
+        })
       }),
     onSuccess: () => {
       setName("");
+      setImageUrl("");
       qc.invalidateQueries({ queryKey: ["adminMenu"] });
     }
   });
@@ -70,6 +85,10 @@ export function AdminMenuPage() {
             <label>Price (₹)</label>
             <input value={priceRupees} onChange={(e) => setPriceRupees(e.target.value)} />
           </div>
+          <div className="field" style={{ minWidth: 240, flex: 1 }}>
+            <label>Image URL</label>
+            <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="/menu/tea.jpg" />
+          </div>
         </div>
         <div className="row">
           <button className="btn primary" disabled={!name || createMutation.isPending} onClick={() => createMutation.mutate()}>
@@ -94,7 +113,10 @@ export function AdminMenuPage() {
               <div className="h3">{cat}</div>
               {items.map((i) => (
                 <div key={i.id} className="row row-between">
-                  <div className="item-title">{i.name}</div>
+                  <div className="row">
+                    {i.imageUrl ? <img className="menu-thumb" src={i.imageUrl} alt={i.name} loading="lazy" /> : null}
+                    <div className="item-title">{i.name}</div>
+                  </div>
                   <div className="price">{formatINR(i.pricePaise)}</div>
                 </div>
               ))}
@@ -113,7 +135,10 @@ export function AdminMenuPage() {
             {items.map((i) => (
               <div key={i.id} className="row row-between">
                 <div>
-                  <div className="item-title">{i.name}</div>
+                  <div className="row">
+                    {i.imageUrl ? <img className="menu-thumb" src={i.imageUrl} alt={i.name} loading="lazy" /> : null}
+                    <div className="item-title">{i.name}</div>
+                  </div>
                   <div className="muted">{formatINR(i.pricePaise)}</div>
                 </div>
                 <div className="row" style={{ marginTop: 0 }}>
@@ -123,6 +148,17 @@ export function AdminMenuPage() {
                     onClick={() => patchMutation.mutate({ id: i.id, patch: { available: !i.available } })}
                   >
                     {i.available ? "Hide" : "Show"}
+                  </button>
+                  <button
+                    className="btn"
+                    disabled={patchMutation.isPending}
+                    onClick={() => {
+                      const nextUrl = window.prompt("Image URL", i.imageUrl ?? "") ?? "";
+                      if (nextUrl === (i.imageUrl ?? "")) return;
+                      patchMutation.mutate({ id: i.id, patch: { imageUrl: nextUrl } });
+                    }}
+                  >
+                    Set Image
                   </button>
                   <button className="btn" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(i.id)}>
                     Delete

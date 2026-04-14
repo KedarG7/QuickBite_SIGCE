@@ -12,7 +12,8 @@ menuRouter.get("/", async (_req, res) => {
       name: i.name,
       category: i.category,
       pricePaise: i.pricePaise,
-      available: i.available
+      available: i.available,
+      imageUrl: i.imageUrl ?? null
     }))
   });
 });

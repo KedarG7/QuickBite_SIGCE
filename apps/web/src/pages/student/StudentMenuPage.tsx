@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { apiFetch, formatINR } from "../../api/client";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 
-type MenuItem = { id: string; name: string; category: string; pricePaise: number; available: boolean };
+type MenuItem = {
+  id: string;
+  name: string;
+  category: string;
+  pricePaise: number;
+  available: boolean;
+  imageUrl?: string | null;
+};
 type CategoryKey = "Breakfast" | "Lunch" | "Snacks";
 
 export function StudentMenuPage() {
@@ -13,15 +20,18 @@ export function StudentMenuPage() {
     queryKey: ["menu"],
     queryFn: () => apiFetch<{ menuItems: MenuItem[] }>("/api/menu")
   });
+  const location = useLocation();
   const navigate = useNavigate();
   const promptTimer = useRef<number | undefined>(undefined);
   const [quickPrompt, setQuickPrompt] = useState<{ name: string; count: number } | null>(null);
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("Breakfast");
-  const [cart, setCart] = useLocalStorageState<{ items: Array<MenuItem & { quantity: number }> }>("cart_student_v1", {
-    items: []
-  });
+  const [cart, setCart] = useLocalStorageState<{ items: Array<MenuItem & { quantity: number }> }>(
+    "cart_student_v1",
+    { items: [] },
+    [location.pathname]
+  );
   const totalCount = cart.items.reduce((a, b) => a + b.quantity, 0);
 
   const filtered = useMemo(() => {
@@ -90,6 +100,7 @@ export function StudentMenuPage() {
           <div className="grid">
             {items.map((item) => (
               <div key={item.id} className="card item-card">
+                {item.imageUrl ? <img className="item-image" src={item.imageUrl} alt={item.name} loading="lazy" /> : null}
                 <div className="row row-between">
                   <div>
                     <div className="item-title">{item.name}</div>

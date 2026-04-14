@@ -21,7 +21,7 @@ export function LoginPage() {
   return (
     <div className="stack">
       <div className="card">
-        <h1>Login</h1>
+        <h1>Unlock Lunch</h1>
         <p className="muted">Use your college account to sign in.</p>
 
         <div className="field">
@@ -35,7 +35,7 @@ export function LoginPage() {
 
         {error ? <div className="notice danger">{error}</div> : null}
 
-        <div className="row">
+        <div className="row auth-actions">
           <button
             className="btn primary"
             disabled={busy}
@@ -63,9 +63,12 @@ export function LoginPage() {
         </div>
       </div>
 
-      <div className="card">
+      <div className="auth-divider" aria-hidden="true">
+        <span>or</span>
+      </div>
+
+      <div className="card google-login-card">
         <h2 className="h2">Google Login</h2>
-        <p className="muted">Requires Google OAuth client id in `apps/web/.env`.</p>
 
         {!googleConfigured ? (
           <div className="notice warn">Google login is not configured.</div>
@@ -105,27 +108,34 @@ export function LoginPage() {
             </div>
           </>
         ) : (
-          <GoogleLogin
-            onSuccess={async (cred) => {
-              setError(null);
-              setBusy(true);
-              try {
-                const idToken = cred.credential;
-                if (!idToken) throw new Error("Missing Google credential");
-                await googleLogin({ idToken });
-                navigate("/");
-              } catch (e: any) {
-                if (e instanceof ApiError && e.payload?.error === "STAFF_ROOM_REQUIRED") {
-                  setGooglePendingToken(cred.credential || null);
-                } else {
-                  setError(e instanceof ApiError ? e.message : "Google login failed");
+          <div className="google-login-panel" aria-busy={busy}>
+            <GoogleLogin
+              onSuccess={async (cred) => {
+                setError(null);
+                setBusy(true);
+                try {
+                  const idToken = cred.credential;
+                  if (!idToken) throw new Error("Missing Google credential");
+                  await googleLogin({ idToken });
+                  navigate("/");
+                } catch (e: any) {
+                  if (e instanceof ApiError && e.payload?.error === "STAFF_ROOM_REQUIRED") {
+                    setGooglePendingToken(cred.credential || null);
+                  } else {
+                    setError(e instanceof ApiError ? e.message : "Google login failed");
+                  }
+                } finally {
+                  setBusy(false);
                 }
-              } finally {
-                setBusy(false);
-              }
-            }}
-            onError={() => setError("Google login failed")}
-          />
+              }}
+              onError={() => setError("Google login failed")}
+              size="large"
+              theme="outline"
+              shape="pill"
+              text="signin_with"
+            />
+            <p className="google-login-hint">Secure sign-in with your college Google account.</p>
+          </div>
         )}
       </div>
     </div>
