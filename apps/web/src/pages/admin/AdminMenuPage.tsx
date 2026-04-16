@@ -23,6 +23,7 @@ export function AdminMenuPage() {
   const [category, setCategory] = useState("Snacks");
   const [priceRupees, setPriceRupees] = useState("20");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageDrafts, setImageDrafts] = useState<Record<string, string>>({});
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -85,13 +86,13 @@ export function AdminMenuPage() {
             <label>Price (₹)</label>
             <input value={priceRupees} onChange={(e) => setPriceRupees(e.target.value)} />
           </div>
-          <div className="field" style={{ minWidth: 240, flex: 1 }}>
+          <div className="field" style={{ minWidth: 220, flex: 1 }}>
             <label>Image URL</label>
-            <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="/menu/tea.jpg" />
+            <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="/menu/burger.jpg" />
           </div>
         </div>
-        <div className="row">
-          <button className="btn primary" disabled={!name || createMutation.isPending} onClick={() => createMutation.mutate()}>
+        <div className="row admin-menu-actions">
+          <button className="btn primary admin-add-btn" disabled={!name || createMutation.isPending} onClick={() => createMutation.mutate()}>
             Add Item
           </button>
         </div>
@@ -113,10 +114,7 @@ export function AdminMenuPage() {
               <div className="h3">{cat}</div>
               {items.map((i) => (
                 <div key={i.id} className="row row-between">
-                  <div className="row">
-                    {i.imageUrl ? <img className="menu-thumb" src={i.imageUrl} alt={i.name} loading="lazy" /> : null}
-                    <div className="item-title">{i.name}</div>
-                  </div>
+                  <div className="item-title">{i.name}</div>
                   <div className="price">{formatINR(i.pricePaise)}</div>
                 </div>
               ))}
@@ -136,12 +134,34 @@ export function AdminMenuPage() {
               <div key={i.id} className="row row-between">
                 <div>
                   <div className="row">
-                    {i.imageUrl ? <img className="menu-thumb" src={i.imageUrl} alt={i.name} loading="lazy" /> : null}
                     <div className="item-title">{i.name}</div>
                   </div>
                   <div className="muted">{formatINR(i.pricePaise)}</div>
+                  <div className="field" style={{ marginTop: 8, minWidth: 220 }}>
+                    <label>Image URL</label>
+                    <input
+                      value={imageDrafts[i.id] ?? i.imageUrl ?? ""}
+                      onChange={(e) => setImageDrafts((prev) => ({ ...prev, [i.id]: e.target.value }))}
+                      placeholder="/menu/burger.jpg"
+                    />
+                  </div>
                 </div>
                 <div className="row" style={{ marginTop: 0 }}>
+                  <button
+                    className="btn"
+                    disabled={
+                      patchMutation.isPending ||
+                      (imageDrafts[i.id] ?? i.imageUrl ?? "") === (i.imageUrl ?? "")
+                    }
+                    onClick={() =>
+                      patchMutation.mutate({
+                        id: i.id,
+                        patch: { imageUrl: (imageDrafts[i.id] ?? "").trim() || null }
+                      })
+                    }
+                  >
+                    Save Image
+                  </button>
                   <button
                     className="btn"
                     disabled={patchMutation.isPending}
@@ -151,16 +171,9 @@ export function AdminMenuPage() {
                   </button>
                   <button
                     className="btn"
-                    disabled={patchMutation.isPending}
-                    onClick={() => {
-                      const nextUrl = window.prompt("Image URL", i.imageUrl ?? "") ?? "";
-                      if (nextUrl === (i.imageUrl ?? "")) return;
-                      patchMutation.mutate({ id: i.id, patch: { imageUrl: nextUrl } });
-                    }}
+                    disabled={deleteMutation.isPending}
+                    onClick={() => deleteMutation.mutate(i.id)}
                   >
-                    Set Image
-                  </button>
-                  <button className="btn" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(i.id)}>
                     Delete
                   </button>
                 </div>

@@ -29,11 +29,11 @@ export async function seedMenuItems() {
     { name: "Tea", priceRupees: 10, category: "Beverages", available: true },
     { name: "Lemon Tea", priceRupees: 10, category: "Beverages", available: true },
     { name: "Black Tea", priceRupees: 10, category: "Beverages", available: true },
-    { name: "Coffee", priceRupees: 15, category: "Beverages", available: false },
-    { name: "Black Coffee", priceRupees: 15, category: "Beverages", available: true },
+    { name: "Coffee", priceRupees: 15, category: "Beverages", available: false, imageUrl: "/menu-items/coffee.png" },
+    { name: "Black Coffee", priceRupees: 15, category: "Beverages", available: true, imageUrl: "/menu-items/blackcoffee.png" },
     { name: "Cold Coffee", priceRupees: 20, category: "Beverages", available: true },
     { name: "Lemon Juice", priceRupees: 15, category: "Beverages", available: true },
-    { name: "Chass", priceRupees: 15, category: "Beverages", available: true },
+    { name: "Chass", priceRupees: 15, category: "Beverages", available: true, imageUrl: "/menu-items/chass.png" },
     { name: "Poha", priceRupees: 20, category: "Snacks", available: false },
     { name: "Upama", priceRupees: 20, category: "Snacks", available: true },
     { name: "Idli Sambhar", priceRupees: 30, category: "Snacks", available: true },
@@ -42,7 +42,7 @@ export async function seedMenuItems() {
     { name: "Methi Paratha", priceRupees: 35, category: "Snacks", available: true },
     { name: "Aloo Paratha", priceRupees: 40, category: "Snacks", available: true },
     { name: "Sabudana Vada", priceRupees: 35, category: "Snacks", available: true },
-    { name: "Vada Pav", priceRupees: 20, category: "Snacks", available: true },
+    { name: "Vada Pav", priceRupees: 20, category: "Snacks", available: true, imageUrl: "/menu-items/vadapav.png" },
     { name: "Samosa", priceRupees: 15, category: "Snacks", available: true },
     { name: "Samosa Pav", priceRupees: 20, category: "Snacks", available: true },
     { name: "Bread Pattice", priceRupees: 20, category: "Snacks", available: false },
@@ -86,7 +86,8 @@ export async function seedMenuItems() {
       name: i.name,
       category: i.category,
       pricePaise: Math.round(i.priceRupees * 100),
-      available: i.available
+      available: i.available,
+      imageUrl: i.imageUrl
     }))
   );
 

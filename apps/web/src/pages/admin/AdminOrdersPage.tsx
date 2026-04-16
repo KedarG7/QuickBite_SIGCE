@@ -30,6 +30,7 @@ export function AdminOrdersPage() {
   const [day, setDay] = useState(() => isoDay());
   const statusList = ["AWAITING_PAYMENT", "NEW", "PREPARING", "READY", "COMPLETED", "CANCELLED"] as const;
   const statusActions = ["NEW", "PREPARING", "READY", "COMPLETED", "CANCELLED"] as const;
+  const [lastReadyId, setLastReadyId] = useState<string | null>(null);
 
   const statusTone = (value: string) => {
     if (value === "READY" || value === "COMPLETED") return "ok";
@@ -73,11 +74,56 @@ export function AdminOrdersPage() {
     (statusMutation.error as Error | undefined)?.message || (paymentMutation.error as Error | undefined)?.message;
 
   const orders = ordersQuery.data?.orders || [];
+  const pendingQueue = useMemo(
+    () =>
+      orders
+        .filter((o) => o.status === "NEW" || o.status === "PREPARING")
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [orders]
+  );
+  const readyQueue = useMemo(
+    () =>
+      orders
+        .filter((o) => o.status === "READY")
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [orders]
+  );
   const counts = useMemo(() => {
     const map = new Map<string, number>();
     for (const o of orders) map.set(o.status, (map.get(o.status) ?? 0) + 1);
     return statusList.map((statusKey) => [statusKey, map.get(statusKey) ?? 0] as const);
   }, [orders]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.repeat) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (statusMutation.isPending) return;
+
+      const currentReady = lastReadyId ? readyQueue.find((o) => o.id === lastReadyId) : null;
+      if (currentReady) {
+        statusMutation.mutate({ id: currentReady.id, status: "COMPLETED" });
+        setLastReadyId(null);
+        return;
+      }
+
+      if (pendingQueue.length) {
+        const next = pendingQueue[0];
+        statusMutation.mutate({ id: next.id, status: "READY" });
+        setLastReadyId(next.id);
+        return;
+      }
+
+      if (readyQueue.length) {
+        statusMutation.mutate({ id: readyQueue[0].id, status: "COMPLETED" });
+        setLastReadyId(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lastReadyId, pendingQueue, readyQueue, statusMutation]);
 
   return (
     <div className="stack">
@@ -88,6 +134,9 @@ export function AdminOrdersPage() {
             <label>Day</label>
             <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
           </div>
+        </div>
+        <div className="muted">
+          Quick action: press Enter once to mark the next pending order READY, press Enter again to complete it.
         </div>
         <div className="row">
           {counts.map(([k, v]) => (

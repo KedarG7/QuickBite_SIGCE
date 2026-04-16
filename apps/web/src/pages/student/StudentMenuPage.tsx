@@ -108,9 +108,9 @@ export function StudentMenuPage() {
                   </div>
                   <div className="price">{formatINR(item.pricePaise)}</div>
                 </div>
-                <div className="row">
+                <div className="row add-to-cart-row">
                   <button
-                    className="btn primary"
+                    className="btn primary add-to-cart-btn"
                     onClick={() => {
                       const nextCount = totalCount + 1;
                       setCart((prev) => {

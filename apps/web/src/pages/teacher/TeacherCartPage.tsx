@@ -31,6 +31,8 @@ export function TeacherCartPage() {
   const [staffRoomModalOpen, setStaffRoomModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const slotsQuery = useQuery({
     queryKey: ["slots"],
@@ -57,6 +59,15 @@ export function TeacherCartPage() {
       setPaymentMethod("CASH");
     }
   }, [paymentMethod, razorpayEnabled]);
+
+  const celebrateAndGo = async () => {
+    setShowSuccessToast(true);
+    setShowConfetti(true);
+    await new Promise((resolve) => window.setTimeout(resolve, 1200));
+    setShowConfetti(false);
+    setShowSuccessToast(false);
+    navigate("/teacher/orders");
+  };
 
   return (
     <div className="stack">
@@ -267,7 +278,7 @@ export function TeacherCartPage() {
                   setCart({ items: [] });
                 }
 
-                navigate("/teacher/orders");
+                await celebrateAndGo();
               } catch (e: any) {
                 setError(e instanceof ApiError ? e.message : "Failed to place order");
               } finally {
@@ -307,6 +318,32 @@ export function TeacherCartPage() {
                 Save
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showConfetti ? (
+        <div className="confetti" aria-hidden="true">
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+          <span className="confetti-piece" />
+        </div>
+      ) : null}
+
+      {showSuccessToast ? (
+        <div className="toast success" role="status" aria-live="polite">
+          <div>
+            <div className="toast-title">Order placed</div>
+            <div className="muted">We are preparing your food.</div>
           </div>
         </div>
       ) : null}
