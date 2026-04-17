@@ -56,7 +56,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     });
   } catch {
     throw new ApiError(
-      "Network error. Please check internet and API URL in VITE_API_BASE.",
+      `Network error. Check internet and VITE_API_BASE (current: ${API_BASE || "EMPTY"}).`,
       0,
       { error: "NETWORK_ERROR" }
     );

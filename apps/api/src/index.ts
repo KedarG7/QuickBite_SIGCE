@@ -24,10 +24,14 @@ async function main() {
   const corsOrigins = env.CORS_ORIGIN.split(",")
     .map((x) => x.trim())
     .filter(Boolean);
+  const allowAnyOrigin = corsOrigins.includes("*");
+  const corsOriginResolver: cors.CorsOptions["origin"] = allowAnyOrigin
+    ? true
+    : corsOrigins;
   app.use(helmet());
   app.use(
     cors({
-      origin: corsOrigins,
+      origin: corsOriginResolver,
       credentials: true
     })
   );
@@ -44,8 +48,11 @@ async function main() {
   app.use("/api", apiRouter);
 
   const server = http.createServer(app);
+  const socketOriginResolver = allowAnyOrigin
+    ? true
+    : corsOrigins;
   const io = new SocketIOServer(server, {
-    cors: { origin: corsOrigins, credentials: true }
+    cors: { origin: socketOriginResolver, credentials: true }
   });
 
   attachSocket(io);
