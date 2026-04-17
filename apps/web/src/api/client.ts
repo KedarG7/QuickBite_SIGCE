@@ -14,6 +14,7 @@ export class ApiError extends Error {
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "";
 const SOCKET_BASE = (import.meta.env.VITE_SOCKET_BASE as string | undefined) || API_BASE;
 const SOCKET_ENABLED = (import.meta.env.VITE_ENABLE_SOCKET as string | undefined) !== "false";
+const AUTH_TOKEN_KEY = "auth_token_v1";
 
 export function getSocketBase() {
   return SOCKET_BASE || window.location.origin;
@@ -23,15 +24,43 @@ export function isSocketEnabled() {
   return SOCKET_ENABLED;
 }
 
+export function getAuthToken() {
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string | null) {
+  try {
+    if (!token) window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    else window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } catch {
+    // ignore storage issues
+  }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers || {})
-    },
-    credentials: "include"
-  });
+  const token = getAuthToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers || {})
+      },
+      credentials: "include"
+    });
+  } catch {
+    throw new ApiError(
+      "Network error. Please check internet and API URL in VITE_API_BASE.",
+      0,
+      { error: "NETWORK_ERROR" }
+    );
+  }
 
   const text = await res.text();
   const contentType = res.headers.get("content-type") || "";

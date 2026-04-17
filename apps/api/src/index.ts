@@ -21,10 +21,13 @@ async function main() {
   const app = express();
 
   app.set("trust proxy", env.NODE_ENV === "production" ? 1 : false);
+  const corsOrigins = env.CORS_ORIGIN.split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CORS_ORIGIN,
+      origin: corsOrigins,
       credentials: true
     })
   );
@@ -42,7 +45,7 @@ async function main() {
 
   const server = http.createServer(app);
   const io = new SocketIOServer(server, {
-    cors: { origin: env.CORS_ORIGIN, credentials: true }
+    cors: { origin: corsOrigins, credentials: true }
   });
 
   attachSocket(io);

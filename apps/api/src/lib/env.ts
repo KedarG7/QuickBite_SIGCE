@@ -6,7 +6,7 @@ dotenv.config();
 const schema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  CORS_ORIGIN: z.string().default("http://localhost:5173,https://localhost"),
 
   MONGO_URI: z.string().default("mongodb://localhost:27017/sigce_canteen"),
 

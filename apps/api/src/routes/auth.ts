@@ -52,7 +52,7 @@ authRouter.post("/register/student", async (req, res) => {
 
   const token = signAuthToken({ sub: String(user._id), role: "STUDENT" });
   setAuthCookie(res, token);
-  return res.json({ user: asSafeUser(user) });
+  return res.json({ user: asSafeUser(user), token });
 });
 
 authRouter.post("/register/teacher", async (req, res) => {
@@ -80,7 +80,7 @@ authRouter.post("/register/teacher", async (req, res) => {
 
   const token = signAuthToken({ sub: String(user._id), role: "TEACHER" });
   setAuthCookie(res, token);
-  return res.json({ user: asSafeUser(user) });
+  return res.json({ user: asSafeUser(user), token });
 });
 
 authRouter.post("/login", async (req, res) => {
@@ -103,7 +103,7 @@ authRouter.post("/login", async (req, res) => {
 
   const token = signAuthToken({ sub: String(user._id), role: user.role });
   setAuthCookie(res, token);
-  return res.json({ user: asSafeUser(user) });
+  return res.json({ user: asSafeUser(user), token });
 });
 
 authRouter.post("/google", async (req, res) => {
@@ -160,7 +160,7 @@ authRouter.post("/google", async (req, res) => {
 
   const token = signAuthToken({ sub: String(user._id), role: user.role });
   setAuthCookie(res, token);
-  return res.json({ user: asSafeUser(user) });
+  return res.json({ user: asSafeUser(user), token });
 });
 
 authRouter.post("/logout", (_req, res) => {

@@ -1,7 +1,7 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiFetch } from "../api/client";
+import { ApiError, apiFetch, setAuthToken } from "../api/client";
 
 export type UserRole = "STUDENT" | "TEACHER" | "ADMIN";
 
@@ -35,6 +35,12 @@ export function AuthProvider(props: { children: React.ReactNode }) {
     retry: false
   });
 
+  useEffect(() => {
+    if (meQuery.error instanceof ApiError && meQuery.error.status === 401) {
+      setAuthToken(null);
+    }
+  }, [meQuery.error]);
+
   const setUser = (user: User | null) => {
     if (user) queryClient.setQueryData(["me"], { user });
     else queryClient.removeQueries({ queryKey: ["me"], exact: true });
@@ -42,31 +48,44 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: (input: { email: string; password: string }) =>
-      apiFetch<{ user: User }>("/api/auth/login", { method: "POST", body: JSON.stringify(input) }),
-    onSuccess: (data) => setUser(data.user)
+      apiFetch<{ user: User; token?: string }>("/api/auth/login", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: (data) => {
+      if (data.token) setAuthToken(data.token);
+      setUser(data.user);
+    }
   });
 
   const googleMutation = useMutation({
     mutationFn: (input: { idToken: string; staffRoomNumber?: string }) =>
-      apiFetch<{ user: User }>("/api/auth/google", { method: "POST", body: JSON.stringify(input) }),
-    onSuccess: (data) => setUser(data.user)
+      apiFetch<{ user: User; token?: string }>("/api/auth/google", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: (data) => {
+      if (data.token) setAuthToken(data.token);
+      setUser(data.user);
+    }
   });
 
   const registerStudentMutation = useMutation({
     mutationFn: (input: { name: string; email: string; password: string }) =>
-      apiFetch<{ user: User }>("/api/auth/register/student", { method: "POST", body: JSON.stringify(input) }),
-    onSuccess: (data) => setUser(data.user)
+      apiFetch<{ user: User; token?: string }>("/api/auth/register/student", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: (data) => {
+      if (data.token) setAuthToken(data.token);
+      setUser(data.user);
+    }
   });
 
   const registerTeacherMutation = useMutation({
     mutationFn: (input: { name: string; email: string; password: string; staffRoomNumber: string }) =>
-      apiFetch<{ user: User }>("/api/auth/register/teacher", { method: "POST", body: JSON.stringify(input) }),
-    onSuccess: (data) => setUser(data.user)
+      apiFetch<{ user: User; token?: string }>("/api/auth/register/teacher", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: (data) => {
+      if (data.token) setAuthToken(data.token);
+      setUser(data.user);
+    }
   });
 
   const logoutMutation = useMutation({
     mutationFn: () => apiFetch<{ ok: true }>("/api/auth/logout", { method: "POST", body: JSON.stringify({}) }),
     onSuccess: () => {
+      setAuthToken(null);
       setUser(null);
       if (typeof window !== "undefined") {
         window.localStorage.removeItem("cart_student_v1");
