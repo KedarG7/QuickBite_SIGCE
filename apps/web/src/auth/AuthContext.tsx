@@ -11,6 +11,7 @@ export type User = {
   email: string;
   role: UserRole;
   staffRoomNumber: string | null;
+  rewardPoints: number;
 };
 
 type AuthContextValue = {

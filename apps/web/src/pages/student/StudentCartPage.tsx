@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { apiFetch, formatINR, ApiError } from "../../api/client";
+import { ApiError, apiFetch, formatINR } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { useGeoLocation } from "../../hooks/useGeoLocation";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
@@ -13,63 +13,59 @@ type SlotsResponse = {
   pickup: Array<{ start: string; slotKey: string; remaining: number }>;
   staffRoomLunch: Array<{ start: string; slotKey: string; remaining: number }>;
 };
+type RewardsResponse = { rewardPoints: number };
 
 export function StudentCartPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const geofenceEnabled = String(import.meta.env.VITE_ENFORCE_GEOFENCE) === "true";
-  const geo = useGeoLocation(geofenceEnabled);
   const razorpayEnabled = String(import.meta.env.VITE_RAZORPAY_ENABLED) === "true";
+  const pointsPerRupeeDiscount = Number(import.meta.env.VITE_POINTS_PER_RUPEE_DISCOUNT || 10);
+  const geo = useGeoLocation(geofenceEnabled);
 
   const [cart, setCart] = useLocalStorageState<{ items: CartItem[] }>("cart_student_v1", { items: [] });
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "RAZORPAY">("CASH");
-  const [slotStart, setSlotStart] = useState<string>("");
+  const [slotStart, setSlotStart] = useState("");
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const slotsQuery = useQuery({
     queryKey: ["slots"],
     queryFn: () => apiFetch<SlotsResponse>("/api/slots")
   });
+  const rewardsQuery = useQuery({
+    queryKey: ["rewardMe"],
+    queryFn: () => apiFetch<RewardsResponse>("/api/rewards/me")
+  });
 
-  const totalPaise = useMemo(() => cart.items.reduce((sum, it) => sum + it.pricePaise * it.quantity, 0), [cart.items]);
+  const subtotalPaise = useMemo(() => cart.items.reduce((sum, it) => sum + it.pricePaise * it.quantity, 0), [cart.items]);
+  const availablePoints = rewardsQuery.data?.rewardPoints ?? user?.rewardPoints ?? 0;
+  const effectivePoints = Math.max(0, Math.min(pointsToRedeem, availablePoints));
+  const previewDiscountPaise = Math.min(subtotalPaise, Math.floor(effectivePoints / pointsPerRupeeDiscount) * 100);
+  const previewTotalPaise = Math.max(0, subtotalPaise - previewDiscountPaise);
   const itemCount = useMemo(() => cart.items.reduce((sum, it) => sum + it.quantity, 0), [cart.items]);
 
   const availableSlots = (slotsQuery.data?.pickup || []).filter((s) => s.remaining > 0);
   const selectedSlot = availableSlots.find((s) => s.start === slotStart) ?? availableSlots[0];
 
   useEffect(() => {
-    if (!slotStart && availableSlots.length) {
-      setSlotStart(availableSlots[0].start);
-    }
+    if (!slotStart && availableSlots.length) setSlotStart(availableSlots[0].start);
   }, [availableSlots, slotStart]);
 
   useEffect(() => {
-    if (!razorpayEnabled && paymentMethod === "RAZORPAY") {
-      setPaymentMethod("CASH");
-    }
+    if (!razorpayEnabled && paymentMethod === "RAZORPAY") setPaymentMethod("CASH");
   }, [paymentMethod, razorpayEnabled]);
-
-  const celebrateAndGo = async () => {
-    setShowSuccessToast(true);
-    setShowConfetti(true);
-    await new Promise((resolve) => window.setTimeout(resolve, 1200));
-    setShowConfetti(false);
-    setShowSuccessToast(false);
-    navigate("/student/orders");
-  };
 
   return (
     <div className="stack">
       <div className="card">
         <h1 className="h1">Cart</h1>
-        {cart.items.length === 0 ? <p className="muted">Your cart is empty.</p> : null}
+        {!cart.items.length ? <p className="muted">Your cart is empty.</p> : null}
       </div>
 
-      {cart.items.length ? (
+      {!!cart.items.length ? (
         <div className="card">
           <div className="stack">
             {cart.items.map((it) => (
@@ -105,8 +101,8 @@ export function StudentCartPage() {
               </div>
             ))}
             <div className="row row-between">
-              <div className="muted">Total</div>
-              <div className="price">{formatINR(totalPaise)}</div>
+              <div className="muted">Subtotal</div>
+              <div className="price">{formatINR(subtotalPaise)}</div>
             </div>
           </div>
         </div>
@@ -114,34 +110,24 @@ export function StudentCartPage() {
 
       <div className="card">
         <h2 className="h2">Pickup Slot</h2>
-        <p className="muted">We preselect the earliest available slot.</p>
-        {slotsQuery.isLoading ? <div className="muted">Loading slots…</div> : null}
+        {slotsQuery.isLoading ? <div className="muted">Loading slots...</div> : null}
         {slotsQuery.isError ? <div className="notice danger">Failed to load slots.</div> : null}
-        {!slotsQuery.isLoading && !slotsQuery.isError && selectedSlot ? (
+        {selectedSlot ? (
           <div className="notice">
-            Pickup at {new Date(selectedSlot.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Remaining {selectedSlot.remaining}
+            Pickup at {new Date(selectedSlot.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Remaining{" "}
+            {selectedSlot.remaining}
           </div>
-        ) : null}
-        {!slotsQuery.isLoading && !slotsQuery.isError && !selectedSlot ? (
-          <div className="hint danger">No slots available.</div>
         ) : null}
       </div>
 
       <div className="card">
-        <h2 className="h2">Payment</h2>
+        <h2 className="h2">Payment and Rewards</h2>
         <div className="row">
-          <button
-            type="button"
-            className={`btn payment-toggle ${paymentMethod === "CASH" ? "primary" : ""}`}
-            aria-pressed={paymentMethod === "CASH"}
-            onClick={() => setPaymentMethod("CASH")}
-          >
+          <button className={`btn ${paymentMethod === "CASH" ? "primary" : ""}`} onClick={() => setPaymentMethod("CASH")}>
             Cash
           </button>
           <button
-            type="button"
-            className={`btn payment-toggle ${paymentMethod === "RAZORPAY" ? "primary" : ""}`}
-            aria-pressed={paymentMethod === "RAZORPAY"}
+            className={`btn ${paymentMethod === "RAZORPAY" ? "primary" : ""}`}
             disabled={!razorpayEnabled}
             onClick={() => setPaymentMethod("RAZORPAY")}
           >
@@ -149,21 +135,29 @@ export function StudentCartPage() {
           </button>
         </div>
 
-        {!razorpayEnabled ? <div className="notice warn">Online payment temporarily unavailable.</div> : null}
+        <div className="field">
+          <label>Redeem Points</label>
+          <input
+            type="number"
+            min={0}
+            max={availablePoints}
+            value={pointsToRedeem}
+            onChange={(e) => setPointsToRedeem(Math.max(0, Number(e.target.value || 0)))}
+          />
+          <div className="hint">
+            Available: {availablePoints} points. {pointsPerRupeeDiscount} points gives Rs 1 discount.
+          </div>
+        </div>
+
+        {previewDiscountPaise > 0 ? (
+          <div className="notice">
+            Discount: {formatINR(previewDiscountPaise)}. Payable total: {formatINR(previewTotalPaise)}.
+          </div>
+        ) : null}
 
         {geofenceEnabled ? (
           <div className="notice warn">
-            {geo.status === "ok" ? (
-              <>Location captured (accuracy {Math.round(geo.accuracyMeters)}m).</>
-            ) : geo.status === "loading" ? (
-              <>Getting your location…</>
-            ) : geo.status === "unsupported" ? (
-              <>Your device does not support location. Orders may be blocked.</>
-            ) : geo.status === "error" ? (
-              <>Location error: {geo.message}</>
-            ) : (
-              <>Location is required inside canteen premises.</>
-            )}
+            {geo.status === "ok" ? "Location captured." : geo.status === "loading" ? "Getting your location..." : "Location is required inside canteen premises."}
           </div>
         ) : null}
 
@@ -173,19 +167,18 @@ export function StudentCartPage() {
           <div className="row row-between">
             <div>
               <div className="h3">Fast checkout</div>
-              <div className="muted">{itemCount} items · Ready in minutes</div>
+              <div className="muted">{itemCount} items</div>
             </div>
-            <div className="price">{formatINR(totalPaise)}</div>
+            <div className="price">{formatINR(previewTotalPaise)}</div>
           </div>
           <button
             className="btn primary block"
             disabled={busy || !cart.items.length || !slotStart}
             onClick={async () => {
-              setError(null);
               setBusy(true);
+              setError(null);
               try {
                 const clientLocation = geo.status === "ok" ? { lat: geo.lat, lng: geo.lng } : undefined;
-
                 const res = await apiFetch<any>("/api/orders", {
                   method: "POST",
                   body: JSON.stringify({
@@ -193,6 +186,7 @@ export function StudentCartPage() {
                     paymentMethod,
                     fulfillment: "PICKUP",
                     scheduledFor: slotStart,
+                    pointsToRedeem: effectivePoints,
                     clientLocation
                   })
                 });
@@ -215,14 +209,13 @@ export function StudentCartPage() {
                           razorpaySignature: payload.razorpay_signature
                         })
                       });
-                      setCart({ items: [] });
                     }
                   });
                 }
 
                 setCart({ items: [] });
-                await celebrateAndGo();
-              } catch (e: any) {
+                navigate("/student/orders");
+              } catch (e) {
                 setError(e instanceof ApiError ? e.message : "Failed to place order");
               } finally {
                 setBusy(false);
@@ -233,32 +226,6 @@ export function StudentCartPage() {
           </button>
         </div>
       </div>
-
-      {showConfetti ? (
-        <div className="confetti" aria-hidden="true">
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-          <span className="confetti-piece" />
-        </div>
-      ) : null}
-
-      {showSuccessToast ? (
-        <div className="toast success" role="status" aria-live="polite">
-          <div>
-            <div className="toast-title">Order placed</div>
-            <div className="muted">We are preparing your food.</div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -296,7 +263,6 @@ async function openRazorpayCheckout(opts: {
   onSuccess: (payload: RazorpaySuccess) => Promise<void>;
 }) {
   await loadRazorpayScript();
-
   return new Promise<void>((resolve, reject) => {
     const rzp = new window.Razorpay({
       key: opts.keyId,

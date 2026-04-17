@@ -9,6 +9,8 @@ type UserDoc = {
   passwordHash?: string;
   googleSub?: string;
   staffRoomNumber?: string;
+  rewardPoints: number;
+  totalRewardPointsEarned: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -20,10 +22,11 @@ const schema = new mongoose.Schema<UserDoc>(
     role: { type: String, required: true, enum: ["STUDENT", "TEACHER", "ADMIN"] },
     passwordHash: { type: String, required: false },
     googleSub: { type: String, required: false },
-    staffRoomNumber: { type: String, required: false, trim: true, maxlength: 20 }
+    staffRoomNumber: { type: String, required: false, trim: true, maxlength: 20 },
+    rewardPoints: { type: Number, required: true, default: 0, min: 0 },
+    totalRewardPointsEarned: { type: Number, required: true, default: 0, min: 0 }
   },
   { timestamps: true }
 );
 
 export const User = mongoose.model<UserDoc>("User", schema);
-

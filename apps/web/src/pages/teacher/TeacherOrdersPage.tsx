@@ -9,6 +9,9 @@ type Order = {
   fulfillment: string;
   staffRoomNumber: string | null;
   scheduledFor: string;
+  subtotalPaise?: number;
+  discountPaise?: number;
+  pointsRedeemed?: number;
   totalPaise: number;
   paymentMethod: string;
   paymentStatus: string;
@@ -27,14 +30,8 @@ export function TeacherOrdersPage() {
     <div className="stack">
       <div className="card">
         <h1 className="h1">My Orders</h1>
-        <p className="muted">Staff room delivery is available only for lunch preorder before the cutoff.</p>
+        <p className="muted">Staff room delivery is available for lunch preorder before cutoff.</p>
       </div>
-
-      {q.isLoading ? <div className="card">Loading…</div> : null}
-      {q.isError ? <div className="card">Failed to load orders.</div> : null}
-      {!q.isLoading && !q.isError && !(q.data?.orders || []).length ? (
-        <div className="card">No orders yet.</div>
-      ) : null}
 
       {(q.data?.orders || []).map((o) => (
         <div key={o.id} className="card">
@@ -53,11 +50,17 @@ export function TeacherOrdersPage() {
             {o.items.map((it, idx) => (
               <div key={idx} className="row row-between">
                 <div>
-                  {it.quantity}× {it.name}
+                  {it.quantity}x {it.name}
                 </div>
                 <div className="price">{formatINR(it.lineTotalPaise)}</div>
               </div>
             ))}
+            {(o.discountPaise || 0) > 0 ? (
+              <div className="row row-between">
+                <div className="muted">Discount</div>
+                <div className="price">- {formatINR(o.discountPaise || 0)}</div>
+              </div>
+            ) : null}
             <div className="row row-between">
               <div className="muted">Total</div>
               <div className="price">{formatINR(o.totalPaise)}</div>

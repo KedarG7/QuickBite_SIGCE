@@ -32,6 +32,9 @@ type OrderDoc = {
   notes?: string;
 
   items: OrderLineItem[];
+  subtotalPaise: number;
+  discountPaise: number;
+  pointsRedeemed: number;
   totalPaise: number;
 
   paymentMethod: PaymentMethod;
@@ -69,6 +72,9 @@ const schema = new mongoose.Schema<OrderDoc>(
     notes: { type: String, required: false, trim: true, maxlength: 240 },
 
     items: { type: [lineItemSchema], required: true },
+    subtotalPaise: { type: Number, required: true, min: 0 },
+    discountPaise: { type: Number, required: true, min: 0, default: 0 },
+    pointsRedeemed: { type: Number, required: true, min: 0, default: 0 },
     totalPaise: { type: Number, required: true, min: 0 },
 
     paymentMethod: { type: String, required: true, enum: ["CASH", "RAZORPAY"] },
@@ -93,4 +99,3 @@ schema.index({ status: 1, createdAt: -1 });
 schema.index({ day: 1, slotKey: 1, fulfillment: 1 });
 
 export const Order = mongoose.model<OrderDoc>("Order", schema);
-

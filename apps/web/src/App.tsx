@@ -17,6 +17,8 @@ import { StudentOrdersPage } from "./pages/student/StudentOrdersPage";
 import { TeacherCartPage } from "./pages/teacher/TeacherCartPage";
 import { TeacherMenuPage } from "./pages/teacher/TeacherMenuPage";
 import { TeacherOrdersPage } from "./pages/teacher/TeacherOrdersPage";
+import { TeacherRewardsPage } from "./pages/teacher/TeacherRewardsPage";
+import { StudentRewardsPage } from "./pages/student/StudentRewardsPage";
 
 export function App() {
   return (
@@ -66,6 +68,7 @@ function Shell() {
             <Route path="menu" element={<StudentMenuPage />} />
             <Route path="cart" element={<StudentCartPage />} />
             <Route path="orders" element={<StudentOrdersPage />} />
+            <Route path="rewards" element={<StudentRewardsPage />} />
           </Route>
 
           <Route path="/teacher" element={<RequireRole role="TEACHER" />}>
@@ -73,6 +76,7 @@ function Shell() {
             <Route path="menu" element={<TeacherMenuPage />} />
             <Route path="cart" element={<TeacherCartPage />} />
             <Route path="orders" element={<TeacherOrdersPage />} />
+            <Route path="rewards" element={<TeacherRewardsPage />} />
           </Route>
 
           <Route path="/admin" element={<RequireAdmin />}>
@@ -241,6 +245,16 @@ function RoleShell() {
         <Link className={active.includes("/orders") ? "navlink active" : "navlink"} to={`${base}/orders`}>
           My Orders
         </Link>
+        {user?.role === "STUDENT" ? (
+          <Link className={active.includes("/rewards") ? "navlink active" : "navlink"} to="/student/rewards">
+            Rewards
+          </Link>
+        ) : null}
+        {user?.role === "TEACHER" ? (
+          <Link className={active.includes("/rewards") ? "navlink active" : "navlink"} to="/teacher/rewards">
+            Student Points
+          </Link>
+        ) : null}
       </div>
       <Outlet />
     </div>

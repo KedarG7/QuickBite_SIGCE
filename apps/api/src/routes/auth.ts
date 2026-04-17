@@ -20,7 +20,8 @@ function asSafeUser(u: any) {
     name: u.name,
     email: u.email,
     role: u.role,
-    staffRoomNumber: u.staffRoomNumber ?? null
+    staffRoomNumber: u.staffRoomNumber ?? null,
+    rewardPoints: Number(u.rewardPoints || 0)
   };
 }
 
@@ -172,4 +173,3 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   if (!user) return res.status(401).json({ error: "UNAUTHORIZED" });
   return res.json({ user: asSafeUser(user) });
 });
-

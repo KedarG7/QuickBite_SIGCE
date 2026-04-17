@@ -7,7 +7,9 @@ import { displayRouter } from "./display.js";
 import { menuRouter } from "./menu.js";
 import { ordersRouter } from "./orders.js";
 import { paymentsRouter } from "./payments.js";
+import { rewardsRouter } from "./rewards.js";
 import { slotsRouter } from "./slots.js";
+import { teacherRouter } from "./teacher.js";
 
 export const apiRouter = Router();
 
@@ -21,3 +23,5 @@ apiRouter.use("/orders", ordersRouter);
 apiRouter.use("/payments", paymentsRouter);
 apiRouter.use("/admin", adminRouter);
 apiRouter.use("/display", displayRouter);
+apiRouter.use("/teacher", teacherRouter);
+apiRouter.use("/rewards", rewardsRouter);

@@ -1,54 +1,67 @@
-# SIGCE Canteen App (React + Node + MongoDB)
+# SIGCE Canteen App
 
-Student, Teacher and Admin panels for canteen ordering with:
-- Role-based login (college email regex for students)
-- Google login (restricted to SIGCE emails)
-- Token-based orders + real-time TV display screen
-- Teacher staff-room delivery + lunch preorder cutoff
-- Razorpay payments + cash option
-- College-hours (9am–5pm) + canteen-premises (geofence) enforcement
+React + Node.js + MongoDB app with Student, Teacher, and Admin panels.
 
-## Prerequisites
-- Node.js 18+
-- MongoDB (local) **or** Docker
+## Features
+- Student and teacher ordering with live token queue
+- Teacher lunch preorder with staff-room delivery cutoff
+- College-hours and optional geofence enforcement
+- Cash and Razorpay online payment
+- Google login and email/password login
+- Teacher-assigned reward points for students
+- Student point redemption for canteen discount during checkout
+- PWA install support and mobile packaging support (Capacitor Android)
 
-## Quick start (local)
-1) Start MongoDB (choose one):
-- Local MongoDB running on `mongodb://localhost:27017`
-- Or Docker:
+## Project structure
+- `apps/api` = Express + MongoDB backend
+- `apps/web` = React web app (PWA)
+
+## Local setup
+1. Copy env templates:
+```bash
+copy apps\api\.env.example apps\api\.env
+copy apps\web\.env.example apps\web\.env
+```
+2. Start MongoDB (choose one):
+- Local MongoDB service, or
+- Docker:
 ```bash
 docker compose up -d
 ```
-
-2) Setup env files:
-- Copy `apps/api/.env.example` → `apps/api/.env`
-- Copy `apps/web/.env.example` → `apps/web/.env`
-
-3) Install + run:
+3. Install and run:
 ```bash
 npm install
 npm run dev
 ```
-
-Open:
-- Web app (Student/Teacher/Admin): `http://localhost:5173`
+4. Open:
+- App: `http://localhost:5173`
 - API health: `http://localhost:4000/health`
-- TV display screen: `http://localhost:5173/display`
 
-## Default admin (seeded)
-Set in `apps/api/.env`:
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
+## Reward points rule
+- Teachers assign points from Teacher panel.
+- Students redeem points in Student cart.
+- Discount formula (configurable):
+- `POINTS_PER_RUPEE_DISCOUNT=10` means 10 points gives Rs 1 discount.
 
-## Notes
-- Razorpay requires `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` in `apps/api/.env`.
-- Google login requires `VITE_GOOGLE_CLIENT_ID` in `apps/web/.env` and `GOOGLE_CLIENT_ID` in `apps/api/.env`.
+## Mobile app path
+This project now supports Android packaging via Capacitor.
 
-## College rules (enforced by API)
-- **College hours:** 9:00–17:00 (configurable via `COLLEGE_HOURS_START` / `COLLEGE_HOURS_END`)
-- **Teacher lunch preorder cutoff:** default **10:30** for staff-room delivery (`TEACHER_LUNCH_PREORDER_CUTOFF`)
-- **Canteen premises only:** optional geofence (`ENFORCE_GEOFENCE=true` + `CANTEEN_LAT/LNG/RADIUS`) — set `VITE_ENFORCE_GEOFENCE=true` in the web app so it sends device location.
+1. One-time Android project creation:
+```bash
+npm run mobile:add-android -w apps/web
+```
+2. Build and sync Android project:
+```bash
+npm run mobile:sync -w apps/web
+```
+3. Open Android Studio project:
+```bash
+npm run mobile:android -w apps/web
+```
+4. In Android Studio:
+- Build APK/AAB
+- Install on device or publish via Play Console
 
-## Student email regex
-Students can register only if their email matches:
-- `STUDENT_EMAIL_REGEX` (default: `^\d{4}ci\d{2}f@sigce\.edu\.in$`)
+Important:
+- For mobile app builds, set `VITE_API_BASE` in `apps/web/.env` to your deployed HTTPS API URL.
+- Do not keep it empty for APK builds because Vite dev proxy is not used inside mobile app runtime.

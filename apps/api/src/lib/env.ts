@@ -41,7 +41,9 @@ const schema = z.object({
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
 
-  GOOGLE_CLIENT_ID: z.string().optional()
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  POINTS_PER_RUPEE_DISCOUNT: z.coerce.number().int().positive().default(10),
+  MAX_POINTS_REDEEM_PER_ORDER: z.coerce.number().int().nonnegative().default(1000)
 });
 
 export const env = schema.parse(process.env);

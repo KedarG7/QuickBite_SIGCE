@@ -22,6 +22,7 @@ import { TokenCounter } from "../models/TokenCounter.js";
 import { User } from "../models/User.js";
 import { socket } from "../lib/socket.js";
 import { razorpay } from "../lib/razorpay.js";
+import { PointTransaction } from "../models/PointTransaction.js";
 
 export const ordersRouter = Router();
 
@@ -39,6 +40,7 @@ const createOrderSchema = z.object({
   fulfillment: z.enum(["PICKUP", "STAFF_ROOM"]).default("PICKUP"),
   scheduledFor: z.string().min(8),
   staffRoomNumber: z.string().trim().min(1).max(20).optional(),
+  pointsToRedeem: z.coerce.number().int().min(0).max(5000).default(0),
   notes: z.string().trim().max(240).optional(),
   clientLocation: z
     .object({
@@ -95,6 +97,9 @@ ordersRouter.get("/my", requireAuth, async (req, res) => {
       fulfillment: o.fulfillment,
       staffRoomNumber: o.staffRoomNumber ?? null,
       scheduledFor: o.scheduledFor,
+      subtotalPaise: o.subtotalPaise ?? o.totalPaise,
+      discountPaise: o.discountPaise ?? 0,
+      pointsRedeemed: o.pointsRedeemed ?? 0,
       totalPaise: o.totalPaise,
       paymentMethod: o.paymentMethod,
       paymentStatus: o.paymentStatus,
@@ -198,12 +203,12 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
   for (const m of menuItems) menuById.set(String(m._id), m);
 
   const lineItems = [];
-  let totalPaise = 0;
+  let subtotalPaise = 0;
   for (const li of parsed.data.items) {
     const m = menuById.get(li.menuItemId);
     if (!m) return res.status(400).json({ error: "ITEM_UNAVAILABLE" });
     const lineTotalPaise = m.pricePaise * li.quantity;
-    totalPaise += lineTotalPaise;
+    subtotalPaise += lineTotalPaise;
     lineItems.push({
       menuItemId: m._id,
       name: m.name,
@@ -212,6 +217,20 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
       lineTotalPaise
     });
   }
+
+  const requestedPoints = Math.min(parsed.data.pointsToRedeem, env.MAX_POINTS_REDEEM_PER_ORDER);
+  let pointsRedeemed = 0;
+  let discountPaise = 0;
+
+  if (requestedPoints > 0 && roleAtOrder === "STUDENT") {
+    const availablePoints = Math.max(0, Number(user.rewardPoints || 0));
+    const actualPoints = Math.min(availablePoints, requestedPoints);
+    const rupeesDiscount = Math.floor(actualPoints / env.POINTS_PER_RUPEE_DISCOUNT);
+    discountPaise = Math.min(subtotalPaise, rupeesDiscount * 100);
+    pointsRedeemed = rupeesDiscount * env.POINTS_PER_RUPEE_DISCOUNT;
+  }
+
+  const totalPaise = Math.max(0, subtotalPaise - discountPaise);
 
   const token = await nextToken(day);
 
@@ -248,6 +267,9 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
       scheduledFor: scheduledAligned.toJSDate(),
       notes: parsed.data.notes,
       items: lineItems,
+      subtotalPaise,
+      discountPaise,
+      pointsRedeemed,
       totalPaise,
       paymentMethod: "RAZORPAY",
       paymentStatus: "PENDING",
@@ -258,6 +280,17 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
     socket.emitOrderNew({ orderId: String(order._id), token: order.token, status: order.status });
     socket.emitQueueUpdate({ updatedAt: new Date().toISOString() });
 
+    if (pointsRedeemed > 0) {
+      await User.findByIdAndUpdate(user._id, { $inc: { rewardPoints: -pointsRedeemed } });
+      await PointTransaction.create({
+        studentId: user._id,
+        orderId: order._id,
+        type: "REDEEM",
+        points: pointsRedeemed,
+        reason: `Redeemed on order token ${order.token}`
+      });
+    }
+
     return res.json({
       order: {
         id: String(order._id),
@@ -266,6 +299,9 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
         fulfillment: order.fulfillment,
         staffRoomNumber: order.staffRoomNumber ?? null,
         scheduledFor: order.scheduledFor,
+        subtotalPaise: order.subtotalPaise,
+        discountPaise: order.discountPaise,
+        pointsRedeemed: order.pointsRedeemed,
         totalPaise: order.totalPaise,
         paymentMethod: order.paymentMethod,
         paymentStatus: order.paymentStatus,
@@ -292,6 +328,9 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
     scheduledFor: scheduledAligned.toJSDate(),
     notes: parsed.data.notes,
     items: lineItems,
+    subtotalPaise,
+    discountPaise,
+    pointsRedeemed,
     totalPaise,
     paymentMethod: "CASH",
     paymentStatus: "DUE",
@@ -301,6 +340,17 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
   socket.emitOrderNew({ orderId: String(order._id), token: order.token, status: order.status });
   socket.emitQueueUpdate({ updatedAt: new Date().toISOString() });
 
+  if (pointsRedeemed > 0) {
+    await User.findByIdAndUpdate(user._id, { $inc: { rewardPoints: -pointsRedeemed } });
+    await PointTransaction.create({
+      studentId: user._id,
+      orderId: order._id,
+      type: "REDEEM",
+      points: pointsRedeemed,
+      reason: `Redeemed on order token ${order.token}`
+    });
+  }
+
   return res.json({
     order: {
       id: String(order._id),
@@ -309,6 +359,9 @@ ordersRouter.post("/", requireAuth, enforceCollegeHours, async (req, res) => {
       fulfillment: order.fulfillment,
       staffRoomNumber: order.staffRoomNumber ?? null,
       scheduledFor: order.scheduledFor,
+      subtotalPaise: order.subtotalPaise,
+      discountPaise: order.discountPaise,
+      pointsRedeemed: order.pointsRedeemed,
       totalPaise: order.totalPaise,
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,

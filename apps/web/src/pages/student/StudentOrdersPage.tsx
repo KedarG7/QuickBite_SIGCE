@@ -9,6 +9,9 @@ type Order = {
   fulfillment: string;
   staffRoomNumber: string | null;
   scheduledFor: string;
+  subtotalPaise?: number;
+  discountPaise?: number;
+  pointsRedeemed?: number;
   totalPaise: number;
   paymentMethod: string;
   paymentStatus: string;
@@ -30,7 +33,7 @@ export function StudentOrdersPage() {
         <p className="muted">Your token appears here after placing an order.</p>
       </div>
 
-      {q.isLoading ? <div className="card">Loading…</div> : null}
+      {q.isLoading ? <div className="card">Loading...</div> : null}
       {q.isError ? <div className="card">Failed to load orders.</div> : null}
 
       {(q.data?.orders || []).map((o) => (
@@ -42,18 +45,33 @@ export function StudentOrdersPage() {
             </div>
           </div>
           <div className="muted">
-            Pickup: {new Date(o.scheduledFor).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
-            Payment: {o.paymentMethod} ({o.paymentStatus})
+            Pickup: {new Date(o.scheduledFor).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Payment:{" "}
+            {o.paymentMethod} ({o.paymentStatus})
           </div>
+
           <div className="stack mini">
             {o.items.map((it, idx) => (
               <div key={idx} className="row row-between">
                 <div>
-                  {it.quantity}× {it.name}
+                  {it.quantity}x {it.name}
                 </div>
                 <div className="price">{formatINR(it.lineTotalPaise)}</div>
               </div>
             ))}
+
+            {(o.discountPaise || 0) > 0 ? (
+              <>
+                <div className="row row-between">
+                  <div className="muted">Subtotal</div>
+                  <div className="price">{formatINR(o.subtotalPaise || o.totalPaise)}</div>
+                </div>
+                <div className="row row-between">
+                  <div className="muted">Points discount ({o.pointsRedeemed || 0} pts)</div>
+                  <div className="price">- {formatINR(o.discountPaise || 0)}</div>
+                </div>
+              </>
+            ) : null}
+
             <div className="row row-between">
               <div className="muted">Total</div>
               <div className="price">{formatINR(o.totalPaise)}</div>
